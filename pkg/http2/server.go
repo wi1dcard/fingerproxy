@@ -47,6 +47,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wi1dcard/fingerproxy/pkg/metadata"
 	"golang.org/x/net/http/httpguts"
 	"golang.org/x/net/http2/hpack"
 )
@@ -1522,10 +1523,33 @@ func (sc *serverConn) processFrame(f Frame) error {
 
 	switch f := f.(type) {
 	case *SettingsFrame:
+		if !f.IsAck() {
+			if md, ok := metadata.FromContext(sc.baseCtx); ok {
+				settings := []metadata.Setting{}
+				for i := 0; i < f.NumSettings(); i++ {
+					s := f.Setting(i)
+					settings = append(settings, metadata.Setting{
+						Id:  uint16(s.ID),
+						Val: s.Val,
+					})
+				}
+				md.HTTP2Frames.Settings = settings
+			}
+		}
 		return sc.processSettings(f)
 	case *MetaHeadersFrame:
+		if md, ok := metadata.FromContext(sc.baseCtx); ok {
+			headers := []metadata.HeaderField{}
+			for _, h := range f.Fields {
+				headers = append(headers, metadata.HeaderField(h))
+			}
+			md.HTTP2Frames.Headers = headers
+		}
 		return sc.processHeaders(f)
 	case *WindowUpdateFrame:
+		if md, ok := metadata.FromContext(sc.baseCtx); ok {
+			md.HTTP2Frames.WindowUpdateIncrement = f.Increment
+		}
 		return sc.processWindowUpdate(f)
 	case *PingFrame:
 		return sc.processPing(f)
@@ -1534,6 +1558,14 @@ func (sc *serverConn) processFrame(f Frame) error {
 	case *RSTStreamFrame:
 		return sc.processResetStream(f)
 	case *PriorityFrame:
+		if md, ok := metadata.FromContext(sc.baseCtx); ok {
+			md.HTTP2Frames.Priorities = append(md.HTTP2Frames.Priorities, metadata.Priority{
+				StreamId:  f.StreamID,
+				StreamDep: f.PriorityParam.StreamDep,
+				Exclusive: f.PriorityParam.Exclusive,
+				Weight:    f.PriorityParam.Weight,
+			})
+		}
 		return sc.processPriority(f)
 	case *GoAwayFrame:
 		return sc.processGoAway(f)
