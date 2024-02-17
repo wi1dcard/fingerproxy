@@ -67,7 +67,7 @@ A few special packages also included:
 
 - `ja4` implements JA4 algorithm based on [utls](https://github.com/refraction-networking/utls).
 - `hack` includes wraps and hacks of golang net stack.
-- `http2` is a fork of standard `http2` package in [`x/net`](https://github.com/golang/net/tree/master/http2). Fingerproxy syncs upstream using [**TODO**](). Follow and sync upstream whenever you want.
+- `http2` is a fork of standard `http2` package in [`x/net`](https://github.com/golang/net/tree/master/http2). Fingerproxy syncs upstream using [./sync-http2-pkg.sh](./sync-http2-pkg.sh). Follow and sync upstream whenever you want.
 
 ## Similar Projects
 
