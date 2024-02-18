@@ -85,11 +85,13 @@ func echoServer(w http.ResponseWriter, req *http.Request) {
 	if req.URL.Path == "/json" {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(&map[string]any{
-			"ja3":   ja3,
-			"ja4":   ja4,
-			"http2": http2,
+			"user-agent": req.UserAgent(),
+			"ja3":        ja3,
+			"ja4":        ja4,
+			"http2":      http2,
 		})
 	} else {
+		fmt.Fprintf(w, "User-Agent: %s\n", req.UserAgent())
 		fmt.Fprintf(w, "JA3 fingerprint: %s\n", ja3)
 		fmt.Fprintf(w, "JA4 fingerprint: %s\n", ja4)
 		fmt.Fprintf(w, "HTTP2 fingerprint: %s\n", http2)
