@@ -69,6 +69,8 @@ A few special packages also included:
 - `hack` includes wraps and hacks of golang net stack.
 - `http2` is a fork of standard `http2` package in [`x/net`](https://github.com/golang/net/tree/master/http2). Fingerproxy syncs upstream using [./sync-http2-pkg.sh](./sync-http2-pkg.sh). Follow and sync upstream whenever you want.
 
+For example, use `proxyserver` and `fingerprint` packages to create an echo server. It simply outputs fingerprinting results. The full code is in [example/echo-server/](example/echo-server/).
+
 ## Similar Projects
 
 ### [gospider007/fp](https://github.com/gospider007/fp)
