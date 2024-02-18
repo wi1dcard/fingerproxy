@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -81,7 +82,16 @@ func echoServer(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	fmt.Fprintf(w, "JA3 fingerprint: %s\n", ja3)
-	fmt.Fprintf(w, "JA4 fingerprint: %s\n", ja4)
-	fmt.Fprintf(w, "HTTP2 fingerprint: %s\n", http2)
+	if req.URL.Path == "/json" {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(&map[string]any{
+			"ja3":   ja3,
+			"ja4":   ja4,
+			"http2": http2,
+		})
+	} else {
+		fmt.Fprintf(w, "JA3 fingerprint: %s\n", ja3)
+		fmt.Fprintf(w, "JA4 fingerprint: %s\n", ja4)
+		fmt.Fprintf(w, "HTTP2 fingerprint: %s\n", http2)
+	}
 }
