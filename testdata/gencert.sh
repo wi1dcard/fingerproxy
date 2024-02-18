@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash -xeuo pipefail
 
 SAN=example.com
 
