@@ -23,6 +23,14 @@ import (
 
 const logFlags = log.LstdFlags | log.Lshortfile | log.Lmsgprefix
 
+const (
+	// TODO: expose these values in CLI flags
+	HTTPIdleTimeout           = 180 * time.Second
+	HTTPReadTimeout           = 60 * time.Second
+	HTTPWriteTimeout          = 60 * time.Second
+	ReverseProxyFlushInterval = 100 * time.Millisecond
+)
+
 var (
 	ProxyServerLog  = log.New(os.Stderr, "[proxyserver] ", logFlags)
 	HTTPServerLog   = log.New(os.Stderr, "[http] ", logFlags)
@@ -32,12 +40,6 @@ var (
 	DefaultLog      = log.New(os.Stderr, "[fingerproxy] ", logFlags)
 
 	PrometheusRegistry = prometheus.NewRegistry()
-
-	HTTPIdleTimeout  = 180 * time.Second
-	HTTPReadTimeout  = 60 * time.Second
-	HTTPWriteTimeout = 60 * time.Second
-
-	ReverseProxyFlushInterval = 100 * time.Millisecond
 
 	GetHeaderInjectors = DefaultHeaderInjectors
 
