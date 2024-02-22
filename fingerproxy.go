@@ -43,6 +43,8 @@ var (
 
 	BuildCommit = "GIT_COMMIT_PLACEHOLDER"
 	BuildTag    = "GIT_TAG_PLACEHOLDER"
+
+	DefaultReverseProxyHTTPHandler = defaultReverseProxyHTTPHandler
 )
 
 func InitFingerprint(verboseLogs bool) {
@@ -82,7 +84,7 @@ func StartPrometheusClient(listenAddr string) {
 	}))
 }
 
-func DefaultReverseProxyHTTPHandler(forwardTo *url.URL) *reverseproxy.HTTPHandler {
+func defaultReverseProxyHTTPHandler(forwardTo *url.URL) *reverseproxy.HTTPHandler {
 	return reverseproxy.NewHTTPHandler(
 		forwardTo,
 		&httputil.ReverseProxy{
