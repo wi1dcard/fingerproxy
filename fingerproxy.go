@@ -32,6 +32,12 @@ const (
 )
 
 var (
+	// values from CI build
+	BuildCommit = "GIT_COMMIT_PLACEHOLDER"
+	BuildTag    = "GIT_TAG_PLACEHOLDER"
+)
+
+var (
 	ProxyServerLog  = log.New(os.Stderr, "[proxyserver] ", logFlags)
 	HTTPServerLog   = log.New(os.Stderr, "[http] ", logFlags)
 	PrometheusLog   = log.New(os.Stderr, "[metrics] ", logFlags)
@@ -41,11 +47,7 @@ var (
 
 	PrometheusRegistry = prometheus.NewRegistry()
 
-	GetHeaderInjectors = DefaultHeaderInjectors
-
-	BuildCommit = "GIT_COMMIT_PLACEHOLDER"
-	BuildTag    = "GIT_TAG_PLACEHOLDER"
-
+	GetHeaderInjectors             = DefaultHeaderInjectors
 	DefaultReverseProxyHTTPHandler = defaultReverseProxyHTTPHandler
 )
 
