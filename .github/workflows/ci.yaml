@@ -7,6 +7,19 @@ on:
     branches: ["master"]
 
 jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests
+        run: |
+          PKG_LIST=$(go list ./... | grep -v github.com/wi1dcard/fingerproxy/pkg/http2)
+          echo "```" >> $GITHUB_STEP_SUMMARY
+          go test -v "$PKG_LIST" >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
+
   build-release:
     name: Build and Release
     runs-on: ubuntu-latest
