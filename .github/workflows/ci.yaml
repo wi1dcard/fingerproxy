@@ -18,9 +18,8 @@ jobs:
       - run: go get
       - name: Run tests
         run: |
-          PKG_LIST=$(go list ./... | grep -v github.com/wi1dcard/fingerproxy/pkg/http2)
           echo '```' >> $GITHUB_STEP_SUMMARY
-          go test -v "$PKG_LIST" >> $GITHUB_STEP_SUMMARY
+          make test >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
   build-release:
