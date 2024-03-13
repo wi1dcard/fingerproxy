@@ -40,6 +40,17 @@ type JA4Fingerprint struct {
 	SignatureAlgorithms signatureAlgorithms
 }
 
+func (j *JA4Fingerprint) UnmarshalBytes(clientHelloRecord []byte, protocol byte) error {
+	chs := &utls.ClientHelloSpec{}
+	// allowBluntMimicry: true
+	// realPSK: false
+	err := chs.FromRaw(clientHelloRecord, true, false)
+	if err != nil {
+		return fmt.Errorf("cannot parse client hello: %w", err)
+	}
+	return j.Unmarshal(chs, protocol)
+}
+
 func (j *JA4Fingerprint) Unmarshal(chs *utls.ClientHelloSpec, protocol byte) error {
 	var err error
 

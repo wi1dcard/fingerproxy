@@ -5,7 +5,6 @@ import (
 	"log"
 
 	"github.com/dreadl0ck/tlsx"
-	utls "github.com/refraction-networking/utls"
 	"github.com/wi1dcard/fingerproxy/pkg/ja3"
 	"github.com/wi1dcard/fingerproxy/pkg/ja4"
 	"github.com/wi1dcard/fingerproxy/pkg/metadata"
@@ -28,14 +27,8 @@ func vlogf(format string, args ...any) {
 
 // JA4Fingerprint is a FingerprintFunc
 func JA4Fingerprint(data *metadata.Metadata) (string, error) {
-	chs := &utls.ClientHelloSpec{}
-	err := chs.FromRaw(data.ClientHelloRecord, true, true)
-	if err != nil {
-		return "", fmt.Errorf("ja4: %w", err)
-	}
-
 	fp := &ja4.JA4Fingerprint{}
-	err = fp.Unmarshal(chs, 't') // TODO: identify connection protocol
+	err := fp.UnmarshalBytes(data.ClientHelloRecord, 't') // TODO: identify connection protocol
 	if err != nil {
 		return "", fmt.Errorf("ja4: %w", err)
 	}
