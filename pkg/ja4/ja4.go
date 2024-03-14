@@ -26,7 +26,7 @@ type JA4Fingerprint struct {
 	SNI                  byte
 	NumberOfCipherSuites numberOfCipherSuites
 	NumberOfExtensions   numberOfExtensions
-	FirstALPN            firstALPN
+	FirstALPN            string
 
 	//
 	// JA4_b
@@ -78,13 +78,12 @@ func (j *JA4Fingerprint) Unmarshal(chs *utls.ClientHelloSpec, protocol byte) err
 func (j *JA4Fingerprint) String() string {
 	ja4a := fmt.Sprintf(
 		"%s%s%s%s%s%s",
-		// ja4_a
 		string(j.Protocol),
-		&j.TLSVersion,
+		j.TLSVersion,
 		string(j.SNI),
-		&j.NumberOfCipherSuites,
-		&j.NumberOfExtensions,
-		&j.FirstALPN,
+		j.NumberOfCipherSuites,
+		j.NumberOfExtensions,
+		j.FirstALPN,
 	)
 
 	ja4b := truncatedSha256(j.CipherSuites.String())
@@ -163,7 +162,18 @@ func (j *JA4Fingerprint) unmarshalFirstALPN(chs *utls.ClientHelloSpec) {
 			}
 		}
 	}
-	j.FirstALPN = firstALPN(alpn)
+	if alpn == "" {
+		j.FirstALPN = "00"
+		return
+	}
+	// https://github.com/FoxIO-LLC/ja4/blob/e7226cb51729f70fce740e615f8b2168ad68f67c/python/ja4.py#L241-L245
+	if len(alpn) > 2 {
+		alpn = string(alpn[0]) + string(alpn[len(alpn)-1])
+	}
+	if alpn[0] > 127 {
+		alpn = "99"
+	}
+	j.FirstALPN = alpn
 }
 
 // keepOriginalOrder should be false unless keeping the original order of cipher
