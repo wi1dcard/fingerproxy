@@ -21,16 +21,17 @@ jobs:
           wget https://github.com/stunnel/static-curl/releases/download/8.6.0-1/curl-linux-x86_64-8.6.0.tar.xz
           tar xf curl-linux-x86_64-8.6.0.tar.xz
           ./curl --version
-      - name: Test
+      - name: Build echo server
         run: |
           go version
           go get
-
+          go build ./example/echo-server
+      - name: Test
+        run: |
           ./testdata/gencert.sh
-          go run ./example/echo-server -verbose -listen-addr :8443 &
-
+          ./echo-server -verbose -listen-addr :8443 &
+          sleep 1
           ./curl -v --fail --insecure -o output.json https://localhost:8443/json
-
           cat output.json | jq
 
   test:
