@@ -7,6 +7,32 @@ on:
     branches: ["master"]
 
 jobs:
+  e2e-test:
+    name: E2E test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          check-latest: true
+      - name: Setup curl
+        run: |
+          wget https://github.com/stunnel/static-curl/releases/download/8.6.0-1/curl-linux-x86_64-8.6.0.tar.xz
+          tar xf curl-linux-x86_64-8.6.0.tar.xz
+          ./curl --version
+      - name: Test
+        run: |
+          go version
+          go get
+
+          ./testdata/gencert.sh
+          go run ./example/echo-server -verbose -listen-addr :8443 &
+
+          ./curl -v --fail --insecure -o output.json https://localhost:8443/json
+
+          cat output.json | jq
+
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -16,10 +42,11 @@ jobs:
         with:
           go-version: stable
           check-latest: true
-      - run: go get
-      - name: Run tests
-        run: |
+      - run: |
           go version
+          go get
+      - name: make test
+        run: |
           echo '```' >> $GITHUB_STEP_SUMMARY
           make test >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
@@ -45,7 +72,7 @@ jobs:
 
       - run: make build
 
-      - name: Get short sha
+      - name: Extract short commit SHA
         id: short-sha
         run: echo "value=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
@@ -60,7 +87,8 @@ jobs:
           name: fingerproxy_linux_amd64_${{ steps.short-sha.outputs.value }}
           path: bin/fingerproxy_linux_amd64
 
-      - if: startsWith(github.ref, 'refs/tags/v')
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
