@@ -47,8 +47,9 @@ type Server struct {
 	// required, immutable base context
 	ctx context.Context
 
-	// required, writing by serveConn, reading by HTTPServer
-	http1ConnCh chan net.Conn
+	// required, func serveConn sends net.Conn to the channel,
+	//           and Server.HTTPServer receives from the channel
+	http1ConnChannelListener *hack.ChannelListener
 
 	// required, true when server is in shutdown
 	inShutdown atomic.Bool
@@ -97,11 +98,11 @@ func (server *Server) serveConn(conn net.Conn) {
 		})
 	} else {
 		ctx, done := context.WithCancel(context.Background())
-		server.http1ConnCh <- &hack.TLSClientHelloConn{
+		server.http1ConnChannelListener.SendToChannel(&hack.TLSClientHelloConn{
 			Done:              done,
 			Conn:              tlsConn,
 			ClientHelloRecord: rec,
-		}
+		})
 		// wait for the connection to be served by HTTP/1.1 server
 		<-ctx.Done()
 	}
@@ -134,10 +135,10 @@ func (server *Server) setupServe() {
 		return server.ctx
 	}
 
-	// listen http1ConnCh
-	if server.http1ConnCh == nil {
-		server.http1ConnCh = make(chan net.Conn)
-		go server.HTTPServer.Serve(hack.NewChannelListener(server.ctx, server.http1ConnCh))
+	// start HTTP/1.1 server
+	if server.http1ConnChannelListener == nil {
+		server.http1ConnChannelListener = hack.NewChannelListener(server.ctx)
+		go server.HTTPServer.Serve(server.http1ConnChannelListener)
 	}
 }
 

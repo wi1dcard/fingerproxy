@@ -2,30 +2,38 @@ package hack
 
 import (
 	"context"
+	"fmt"
 	"net"
 )
 
-func NewChannelListener(ctx context.Context, ch chan net.Conn) *ChannelListener {
+func NewChannelListener(ctx context.Context) *ChannelListener {
 	ln := &ChannelListener{
-		Channel: ch,
+		channel: make(chan net.Conn),
 	}
-
 	ln.context, ln.stop = context.WithCancel(ctx)
 	return ln
 }
 
 type ChannelListener struct {
-	Channel chan net.Conn
+	channel chan net.Conn
 	context context.Context
 	stop    context.CancelFunc
+}
+
+func (ln *ChannelListener) SendToChannel(conn net.Conn) {
+	ln.channel <- conn
 }
 
 func (ln *ChannelListener) Accept() (net.Conn, error) {
 	select {
 	case <-ln.context.Done():
 		return nil, ln.context.Err()
-	case conn := <-ln.Channel:
-		return conn, nil
+	case conn, ok := <-ln.channel:
+		if ok {
+			return conn, nil
+		} else {
+			return nil, fmt.Errorf("channel listener: internal channel closed")
+		}
 	}
 }
 
