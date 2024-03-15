@@ -3,6 +3,7 @@ package proxyserver
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -45,7 +46,8 @@ type Server struct {
 	metricRequestsTotal *prometheus.CounterVec
 
 	// required, immutable base context
-	ctx context.Context
+	ctx       context.Context
+	ctxCancel context.CancelFunc
 
 	// required, func serveConn sends net.Conn to the channel,
 	//           and Server.HTTPServer receives from the channel
@@ -119,6 +121,28 @@ func updateConnContext(ctx context.Context, c net.Conn) context.Context {
 	return ctx
 }
 
+func (server *Server) serveHTTP1() {
+	err := server.HTTPServer.Serve(server.http1ConnChannelListener)
+
+	if errors.Is(err, context.Canceled) {
+		// hack.ChannelListener.Accept() returns context canceled,
+		// means our server is shutting down
+		return
+	}
+
+	if errors.Is(err, http.ErrServerClosed) {
+		// ErrServerClosed means internal HTTP server is shutting down,
+		// if our server is not shutting down, then shut it down
+		if !server.shuttingDown() {
+			server.ctxCancel()
+		}
+		return
+	}
+
+	// Here should be impossible
+	panic(err)
+}
+
 func (server *Server) setupServe() {
 	server.mu.Lock()
 	defer server.mu.Unlock()
@@ -138,7 +162,7 @@ func (server *Server) setupServe() {
 	// start HTTP/1.1 server
 	if server.http1ConnChannelListener == nil {
 		server.http1ConnChannelListener = hack.NewChannelListener(server.ctx)
-		go server.HTTPServer.Serve(server.http1ConnChannelListener)
+		go server.serveHTTP1()
 	}
 }
 
@@ -239,7 +263,6 @@ func (server *Server) shuttingDown() bool {
 // Creates a new proxy server
 func NewServer(ctx context.Context, handler http.Handler, tlsConfig *tls.Config) *Server {
 	server := &Server{
-		ctx:       ctx,
 		TLSConfig: tlsConfig,
 
 		HTTPServer: &http.Server{
@@ -247,6 +270,8 @@ func NewServer(ctx context.Context, handler http.Handler, tlsConfig *tls.Config)
 		},
 		HTTP2Server: &http2.Server{},
 	}
+
+	server.ctx, server.ctxCancel = context.WithCancel(ctx)
 
 	return server
 }
