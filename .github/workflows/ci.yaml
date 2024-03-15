@@ -1,7 +1,6 @@
 name: CI
 on:
   push:
-    tags: ["*"]
     branches: ["master"]
   pull_request:
     branches: ["master"]
@@ -58,17 +57,11 @@ jobs:
           make test >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
-  build-release:
-    name: Build and Release
+  build:
+    name: Build
     runs-on: ubuntu-latest
-    permissions:
-      # Allow creating releases
-      contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -76,7 +69,6 @@ jobs:
       - run: |
           go version
           go get
-
       - run: make build
 
       - name: Extract short commit SHA
@@ -93,15 +85,3 @@ jobs:
         with:
           name: fingerproxy_linux_amd64_${{ steps.short-sha.outputs.value }}
           path: bin/fingerproxy_linux_amd64
-
-      - name: Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          TAG=$(git describe --tags --abbrev=0 HEAD)
-          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ || true)
-          [[ -n $LAST_TAG ]] && RANGE=$LAST_TAG..HEAD || RANGE=HEAD
-          RELEASE_NOTES=$(git log "$RANGE" --oneline --decorate)
-
-          gh release create --notes "$RELEASE_NOTES" "$TAG" bin/*
