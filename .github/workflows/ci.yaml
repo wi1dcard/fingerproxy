@@ -36,7 +36,7 @@ jobs:
           test $(jq -r '.http2' o.json) = "3:100;4:10485760;2:0|1048510465|0|m,s,a,p"
           test $(jq -r '.ja3' o.json) = "0149f47eabf9a20d0893e2a44e5a6323"
           test $(jq -r '.ja4' o.json) = "t13d3112h2_e8f1e7e78f70_6bebaf5329ac"
-          test $(jq -r '.user-agent' o.json) = "curl/8.6.0"
+          test $(jq -r '."user-agent"' o.json) = "curl/8.6.0"
 
   test:
     name: Test
