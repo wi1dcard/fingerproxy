@@ -89,9 +89,9 @@ func (server *Server) serveConn(conn net.Conn) {
 	}
 
 	// client hello stored in hajackedConn while reading for real handshake
-	rec := hijackedConn.GetClientHello()
-	if len(rec) == 0 {
-		server.logf("could not read client hello from: %s", conn.RemoteAddr())
+	rec, err := hijackedConn.GetClientHello()
+	if err != nil {
+		server.logf("could not read client hello from: %s", err)
 		server.metricsRequestsTotalInc("0", "")
 		return
 	}

@@ -2,6 +2,8 @@ package hack
 
 import (
 	"bytes"
+	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -10,6 +12,10 @@ import (
 const (
 	recordTypeHandshake = 0x16
 	recordHeaderLen     = 5
+)
+
+var (
+	ErrIncompleteClientHello = errors.New("incomplete client hello")
 )
 
 type HijackClientHelloConn struct {
@@ -36,10 +42,9 @@ func (c *HijackClientHelloConn) Read(b []byte) (int, error) {
 	n, err := c.tlsConn.Read(b)
 	if err == nil {
 		if c.hasCompleteClientHello() {
-			c.vlogf("got %d bytes, but client hello is already mature, skipping", n)
+			c.vlogf("got %d bytes, but client hello is already mature, skipping hijack", n)
 		} else {
-			// ignores the error which should be impossible
-			_ = c.hijackClientHello(b[:n])
+			c.hijackClientHello(b[:n])
 		}
 	}
 	return n, err
@@ -62,43 +67,54 @@ func (c *HijackClientHelloConn) hasCompleteClientHello() bool {
 	return true
 }
 
-func (c *HijackClientHelloConn) hijackClientHello(b []byte) error {
+func (c *HijackClientHelloConn) hijackClientHello(b []byte) {
 	c.buf.Write(b)
 	c.vlogf("wrote %d bytes, total %d bytes", len(b), c.buf.Len())
 
+	// ignores the error which should be impossible
+	_ = c.tryParseClientHello()
+}
+
+func (c *HijackClientHelloConn) tryParseClientHello() error {
 	if c.hasCompleteClientHello() {
-		c.vlogf("client hello is mature after wrote")
+		c.vlogf("client hello is mature, skipping parse")
 		return nil
 	}
 
 	bufBytes := c.buf.Bytes()
 	bufLen := c.buf.Len()
-	if bufBytes[0] != recordTypeHandshake {
-		err := fmt.Errorf("tls record type is not a handshake")
-		c.vlogf("%s", err)
-		return err
+	if bufLen < 5 {
+		c.vlogf("buffer too short (%d bytes), skipping parse", bufLen)
+		return ErrIncompleteClientHello
 	}
 
-	if bufLen >= 5 {
-		// vers := uint16(bufBytes[1])<<8 | uint16(bufBytes[2])
-		handshakeLen := uint16(bufBytes[3])<<8 | uint16(bufBytes[4])
-		c.expectedLen = recordHeaderLen + handshakeLen
-
-		// call hasCompleteClientHello to truncate the buffer if possible
-		if c.hasCompleteClientHello() {
-			c.vlogf("client hello is mature after got record length")
-		}
+	recType := bufBytes[0]
+	if recType != recordTypeHandshake {
+		return fmt.Errorf("tls record type 0x%x is not a handshake", recType)
 	}
 
-	return nil
+	vers := uint16(bufBytes[1])<<8 | uint16(bufBytes[2])
+	if vers < tls.VersionSSL30 || vers > tls.VersionTLS13 {
+		return fmt.Errorf("unknown tls version: 0x%x", vers)
+	}
+
+	handshakeLen := uint16(bufBytes[3])<<8 | uint16(bufBytes[4])
+	c.expectedLen = recordHeaderLen + handshakeLen
+
+	// call hasCompleteClientHello to truncate the buffer if possible
+	if c.hasCompleteClientHello() {
+		c.vlogf("client hello is mature after got record length")
+		return nil
+	} else {
+		return ErrIncompleteClientHello
+	}
 }
 
-func (c *HijackClientHelloConn) GetClientHello() []byte {
-	if c.hasCompleteClientHello() {
-		return c.buf.Bytes()
-	} else {
-		return nil
+func (c *HijackClientHelloConn) GetClientHello() ([]byte, error) {
+	if err := c.tryParseClientHello(); err != nil {
+		return nil, err
 	}
+	return c.buf.Bytes(), nil
 }
 
 func (c *HijackClientHelloConn) vlogf(format string, args ...any) {
