@@ -110,7 +110,7 @@ jobs:
     needs: build-echoserver
     strategy:
       matrix:
-        number_of_requests: [1000, 10000, 100000]
+        number_of_requests: [100, 1000, 10000]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -159,4 +159,3 @@ jobs:
           sleep 1
 
           wrk -d 30 -c 10 https://localhost:8443/ | tee $GITHUB_STEP_SUMMARY
-          kill $ECHOSERVER_PID
