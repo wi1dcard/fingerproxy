@@ -118,7 +118,7 @@ jobs:
           name: echo-server
       - name: Setup ab
         run: |
-          apt-get install -y apache2-utils
+          sudo apt-get install -y apache2-utils
           ab -V
       - name: Test
         run: |
