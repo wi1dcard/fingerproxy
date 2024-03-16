@@ -65,21 +65,25 @@ func echoServer(w http.ResponseWriter, req *http.Request) {
 	data, ok := metadata.FromContext(req.Context())
 	if !ok {
 		http.Error(w, "failed to get context", http.StatusInternalServerError)
+		return
 	}
 
 	ja3, err := fingerprint.JA3Fingerprint(data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	ja4, err := fingerprint.JA4Fingerprint(data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	http2, err := fingerprint.HTTP2Fingerprint(data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	if req.URL.Path == "/json" {
