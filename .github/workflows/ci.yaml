@@ -28,7 +28,7 @@ jobs:
       - name: Test
         run: |
           ./testdata/gencert.sh
-          ./echo-server -verbose -listen-addr :8443 &
+          ./echo-server -verbose &
           sleep 1
           ./curl -v --fail --insecure -o o.json https://localhost:8443/json
 
