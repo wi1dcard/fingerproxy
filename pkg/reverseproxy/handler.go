@@ -52,11 +52,10 @@ func (f *HTTPHandler) rewriteFunc(r *httputil.ProxyRequest) {
 			r.Out.Header.Set(k, v)
 		}
 	}
-
-	// TODO: here actually metadata in context can be deleted
 }
 
 func (f *HTTPHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	// TODO: add liveness probe
 	f.ReverseProxy.ServeHTTP(w, req)
 }
 
