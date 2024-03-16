@@ -144,7 +144,7 @@ jobs:
       - name: Setup wrk
         run: |
           sudo apt-get install -y wrk
-          wrk --version
+          wrk --version || true
       - name: Benchmark
         run: |
           chmod +x ./echo-server
