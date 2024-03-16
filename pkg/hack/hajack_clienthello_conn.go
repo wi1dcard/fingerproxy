@@ -94,7 +94,11 @@ func (c *HijackClientHelloConn) hijackClientHello(b []byte) error {
 }
 
 func (c *HijackClientHelloConn) GetClientHello() []byte {
-	return c.buf.Bytes()
+	if c.hasCompleteClientHello() {
+		return c.buf.Bytes()
+	} else {
+		return nil
+	}
 }
 
 func (c *HijackClientHelloConn) vlogf(format string, args ...any) {
