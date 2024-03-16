@@ -62,7 +62,7 @@ jobs:
         with:
           go-version: stable
           check-latest: true
-      - name: Build echo server
+      - name: Build
         run: |
           go version
           go get
@@ -83,6 +83,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
+        with:
+          name: echo-server
       - name: Setup curl
         run: |
           wget https://github.com/stunnel/static-curl/releases/download/8.6.0-1/curl-linux-x86_64-8.6.0.tar.xz
@@ -111,6 +113,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
+        with:
+          name: echo-server
       - name: Setup ab
         run: |
           apt-get install -y apache2-utils
