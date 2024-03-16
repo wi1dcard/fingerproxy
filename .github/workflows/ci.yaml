@@ -110,7 +110,7 @@ jobs:
     needs: build-echoserver
     strategy:
       matrix:
-        number_of_requests: [100, 1000, 10000]
+        number_of_requests: [1000, 10000, 50000]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
