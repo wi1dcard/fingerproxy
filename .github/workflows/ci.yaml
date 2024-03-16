@@ -130,7 +130,7 @@ jobs:
             cat /proc/$!/status | grep VmRSS
             ab -n ${{ matrix.number_of_requests }} -c 10 https://localhost:8443/
             cat /proc/$!/status | grep VmRSS
-          ) | tee $GITHUB_STEP_SUMMARY
+          ) | tee -a $GITHUB_STEP_SUMMARY
 
   benchmark:
     name: Benchmark
@@ -151,11 +151,11 @@ jobs:
           ./echo-server &
           sleep 1
 
-          wrk -d 30 -c 10 https://localhost:8443/ | tee $GITHUB_STEP_SUMMARY
+          wrk -d 30 -c 10 https://localhost:8443/ | tee -a $GITHUB_STEP_SUMMARY
           kill $!
           sleep 1
 
           ./echo-server --benchmark-control-group &
           sleep 1
 
-          wrk -d 30 -c 10 https://localhost:8443/ | tee $GITHUB_STEP_SUMMARY
+          wrk -d 30 -c 10 https://localhost:8443/ | tee -a $GITHUB_STEP_SUMMARY
