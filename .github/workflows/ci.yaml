@@ -6,39 +6,6 @@ on:
     branches: ["master"]
 
 jobs:
-  e2e-test:
-    name: E2E test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: stable
-          check-latest: true
-      - name: Setup curl
-        run: |
-          wget https://github.com/stunnel/static-curl/releases/download/8.6.0-1/curl-linux-x86_64-8.6.0.tar.xz
-          tar xf curl-linux-x86_64-8.6.0.tar.xz
-          ./curl --version
-      - name: Build echo server
-        run: |
-          go version
-          go get
-          go build ./example/echo-server
-      - name: Test
-        run: |
-          ./testdata/gencert.sh
-          ./echo-server -verbose &
-          sleep 1
-          ./curl -v --fail --insecure -o o.json https://localhost:8443/json
-
-          cat o.json | jq
-
-          test $(jq -r '.http2' o.json) = "3:100;4:10485760;2:0|1048510465|0|m,s,a,p"
-          test $(jq -r '.ja3' o.json) = "0149f47eabf9a20d0893e2a44e5a6323"
-          test $(jq -r '.ja4' o.json) = "t13d3112h2_e8f1e7e78f70_6bebaf5329ac"
-          test $(jq -r '."user-agent"' o.json) = "curl/8.6.0"
-
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -85,3 +52,36 @@ jobs:
         with:
           name: fingerproxy_linux_amd64_${{ steps.short-sha.outputs.value }}
           path: bin/fingerproxy_linux_amd64
+
+  e2e-test:
+    name: E2E test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          check-latest: true
+      - name: Setup curl
+        run: |
+          wget https://github.com/stunnel/static-curl/releases/download/8.6.0-1/curl-linux-x86_64-8.6.0.tar.xz
+          tar xf curl-linux-x86_64-8.6.0.tar.xz
+          ./curl --version
+      - name: Build echo server
+        run: |
+          go version
+          go get
+          go build ./example/echo-server
+      - name: Test
+        run: |
+          ./testdata/gencert.sh
+          ./echo-server -verbose &
+          sleep 1
+          ./curl -v --fail --insecure -o o.json https://localhost:8443/json
+
+          cat o.json | jq
+
+          test $(jq -r '.http2' o.json) = "3:100;4:10485760;2:0|1048510465|0|m,s,a,p"
+          test $(jq -r '.ja3' o.json) = "0149f47eabf9a20d0893e2a44e5a6323"
+          test $(jq -r '.ja4' o.json) = "t13d3112h2_e8f1e7e78f70_6bebaf5329ac"
+          test $(jq -r '."user-agent"' o.json) = "curl/8.6.0"
