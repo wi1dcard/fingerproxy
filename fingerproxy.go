@@ -16,6 +16,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/wi1dcard/fingerproxy/pkg/debug"
 	"github.com/wi1dcard/fingerproxy/pkg/fingerprint"
 	"github.com/wi1dcard/fingerproxy/pkg/proxyserver"
 	"github.com/wi1dcard/fingerproxy/pkg/reverseproxy"
@@ -170,16 +171,17 @@ func Run() {
 
 	InitFingerprint(*flagVerboseLogs)
 
-	handler := DefaultReverseProxyHTTPHandler(forwardTo)
-
-	server := DefaultProxyServer(handler, tlsConfig, *flagVerboseLogs)
-
-	DefaultLog.Printf("server listening on %s", *flagListenAddr)
+	server := DefaultProxyServer(
+		DefaultReverseProxyHTTPHandler(forwardTo),
+		tlsConfig,
+		*flagVerboseLogs,
+	)
 
 	StartPrometheusClient(*flagMetricsListenAddr)
+	debug.StartDebugServer()
 
+	DefaultLog.Printf("server listening on %s", *flagListenAddr)
 	err = server.ListenAndServe(*flagListenAddr)
-
 	DefaultLog.Print(err)
 }
 
