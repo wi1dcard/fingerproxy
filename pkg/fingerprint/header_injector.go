@@ -80,6 +80,8 @@ func (i *FingerprintHeaderInjector) GetHeaderValue(req *http.Request) (string, e
 		return "", fmt.Errorf("failed to get context")
 	}
 
+	vlogf("client hello (%s): %x", req.RemoteAddr, data.ClientHelloRecord)
+
 	start := time.Now()
 	fp, err := i.FingerprintFunc(data)
 	duration := time.Since(start)
