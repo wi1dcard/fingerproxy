@@ -53,8 +53,8 @@ jobs:
           name: fingerproxy_linux_amd64_${{ steps.short-sha.outputs.value }}
           path: bin/fingerproxy_linux_amd64
 
-  e2e-test:
-    name: E2E test
+  build-echoserver:
+    name: Build echo server
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,19 +62,34 @@ jobs:
         with:
           go-version: stable
           check-latest: true
-      - name: Setup curl
-        run: |
-          wget https://github.com/stunnel/static-curl/releases/download/8.6.0-1/curl-linux-x86_64-8.6.0.tar.xz
-          tar xf curl-linux-x86_64-8.6.0.tar.xz
-          ./curl --version
       - name: Build echo server
         run: |
           go version
           go get
           go build ./example/echo-server
+          ./testdata/gencert.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: echo-server
+          path: |
+            echo-server
+            tls.crt
+            tls.key
+
+  e2e-test:
+    name: E2E test
+    runs-on: ubuntu-latest
+    needs: build-echoserver
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+      - name: Setup curl
+        run: |
+          wget https://github.com/stunnel/static-curl/releases/download/8.6.0-1/curl-linux-x86_64-8.6.0.tar.xz
+          tar xf curl-linux-x86_64-8.6.0.tar.xz
+          ./curl --version
       - name: Test
         run: |
-          ./testdata/gencert.sh
           ./echo-server -verbose &
           sleep 1
           ./curl -v --fail --insecure -o o.json https://localhost:8443/json
@@ -85,3 +100,26 @@ jobs:
           test $(jq -r '.ja3' o.json) = "0149f47eabf9a20d0893e2a44e5a6323"
           test $(jq -r '.ja4' o.json) = "t13d3112h2_e8f1e7e78f70_6bebaf5329ac"
           test $(jq -r '."user-agent"' o.json) = "curl/8.6.0"
+
+  load-test:
+    name: Load test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        number_of_requests: [1000, 10000, 100000]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+      - name: Setup ab
+        run: |
+          apt-get install -y apache2-utils
+          ab -V
+      - name: Test
+        run: |
+          ./echo-server &
+          ECHOSERVER_PID=$!
+          sleep 1
+
+          cat /proc/$ECHOSERVER_PID/status
+          ab -n ${{ matrix.number_of_requests }} -c 10 https://localhost:8443/
+          cat /proc/$ECHOSERVER_PID/status
