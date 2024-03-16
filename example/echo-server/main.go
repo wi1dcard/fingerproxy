@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/wi1dcard/fingerproxy/pkg/debug"
 	"github.com/wi1dcard/fingerproxy/pkg/fingerprint"
 	"github.com/wi1dcard/fingerproxy/pkg/metadata"
 	"github.com/wi1dcard/fingerproxy/pkg/proxyserver"
@@ -32,6 +33,11 @@ func main() {
 		"tls.key",
 		"TLS certificate key file name",
 	)
+	flagBenchmarkControlGroup := flag.Bool(
+		"benchmark-control-group",
+		false,
+		"Start a golang default TLS server as the control group for benchmarking",
+	)
 	flagVerboseLogs := flag.Bool("verbose", false, "Enable verbose logs")
 	flag.Parse()
 
@@ -51,14 +57,35 @@ func main() {
 	// shutdown on interrupt signal (ctrl + c)
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 
-	// create proxyserver
-	server := proxyserver.NewServer(ctx, http.HandlerFunc(echoServer), tlsConf)
-	server.VerboseLogs = *flagVerboseLogs
+	if *flagBenchmarkControlGroup {
+		// create golang default https server
+		server := &http.Server{
+			Addr:      *flagListenAddr,
+			Handler:   http.HandlerFunc(echoServer),
+			TLSConfig: tlsConf,
+		}
+		go func() {
+			<-ctx.Done()
+			server.Shutdown(context.Background())
+		}()
 
-	// listen and serve
-	log.Printf("server listening on %s", *flagListenAddr)
-	err := server.ListenAndServe(*flagListenAddr)
-	log.Fatal(err)
+		// listen and serve
+		log.Printf("server (benchmark control group) listening on %s", *flagListenAddr)
+		err := server.ListenAndServeTLS("", "")
+		log.Fatal(err)
+	} else {
+		// create proxyserver
+		server := proxyserver.NewServer(ctx, http.HandlerFunc(echoServer), tlsConf)
+		server.VerboseLogs = *flagVerboseLogs
+
+		// start debug server if build tag `debug` is specified
+		debug.StartDebugServer()
+
+		// listen and serve
+		log.Printf("server listening on %s", *flagListenAddr)
+		err := server.ListenAndServe(*flagListenAddr)
+		log.Fatal(err)
+	}
 }
 
 func echoServer(w http.ResponseWriter, req *http.Request) {
