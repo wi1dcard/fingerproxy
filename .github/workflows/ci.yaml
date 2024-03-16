@@ -70,7 +70,7 @@ jobs:
           ./testdata/gencert.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: echo-server
+          name: echoserver-ci-only
           path: |
             echo-server
             tls.crt
@@ -84,7 +84,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: echo-server
+          name: echoserver-ci-only
       - name: Setup curl
         run: |
           wget https://github.com/stunnel/static-curl/releases/download/8.6.0-1/curl-linux-x86_64-8.6.0.tar.xz
@@ -115,7 +115,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: echo-server
+          name: echoserver-ci-only
       - name: Setup ab
         run: |
           sudo apt-get install -y apache2-utils
@@ -140,7 +140,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: echo-server
+          name: echoserver-ci-only
       - name: Setup wrk
         run: |
           sudo apt-get install -y wrk
