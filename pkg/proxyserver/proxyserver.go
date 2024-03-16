@@ -5,11 +5,13 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -33,7 +35,7 @@ type Server struct {
 	// optional, error logger
 	ErrorLog *log.Logger
 
-	// optional, enable verbose and debug logs
+	// optional, whether enable verbose and debug logs
 	VerboseLogs bool
 
 	// optional, prometheus metrics registry
@@ -41,6 +43,9 @@ type Server struct {
 
 	// optional, prometheus metrics namespace, aka, prefix
 	MetricsPrefix string
+
+	// optional, TLS handshake timeout, default is infinity
+	TLSHandshakeTimeout time.Duration
 
 	// optional, requests_total metric
 	metricRequestsTotal *prometheus.CounterVec
@@ -65,22 +70,28 @@ func (server *Server) serveConn(conn net.Conn) {
 	defer recover()
 	defer conn.Close()
 
-	bufconn := hack.NewBufferedConn(conn)
+	hijackedConn := hack.NewHijackClientHelloConn(conn)
+	hijackedConn.VerboseLogFunc = server.vlogf
 
-	// intercept the TLS record (which should be a ClientHello) before real handshake
-	rec, err := captureClientHelloRecord(bufconn)
-	if err != nil {
-		server.logf("%s", err)
+	tlsConn := tls.Server(hijackedConn, server.TLSConfig)
+	defer tlsConn.Close()
+
+	// attempt to handshake
+	if err := server.tlsHandshakeWithTimeout(tlsConn); err != nil {
+		// https://github.com/golang/go/blob/release-branch.go1.22/src/net/http/server.go#L1925-L1929
+		if re, ok := err.(tls.RecordHeaderError); ok && re.Conn != nil && tlsRecordHeaderLooksLikeHTTP(re.RecordHeader) {
+			io.WriteString(re.Conn, "HTTP/1.0 400 Bad Request\r\n\r\nClient sent an HTTP request to an HTTPS server.\n")
+		}
+
+		server.logf("tls handshake: %s", err)
 		server.metricsRequestsTotalInc("0", "")
 		return
 	}
 
-	tlsConn := tls.Server(bufconn, server.TLSConfig)
-	defer tlsConn.Close()
-
-	// do the real handshake
-	if err := tlsConn.HandshakeContext(server.ctx); err != nil {
-		server.logf("tls handshake: %s", err)
+	// client hello stored in hajackedConn while reading for real handshake
+	rec := hijackedConn.GetClientHello()
+	if len(rec) == 0 {
+		server.logf("could not read client hello from: %s", conn.RemoteAddr())
 		server.metricsRequestsTotalInc("0", "")
 		return
 	}
@@ -110,6 +121,16 @@ func (server *Server) serveConn(conn net.Conn) {
 	}
 
 	server.metricsRequestsTotalInc("1", cs.NegotiatedProtocol)
+}
+
+func (server *Server) tlsHandshakeWithTimeout(tlsConn *tls.Conn) error {
+	if server.TLSHandshakeTimeout == 0 {
+		return tlsConn.HandshakeContext(server.ctx)
+	}
+
+	ctx, cancel := context.WithTimeout(server.ctx, server.TLSHandshakeTimeout)
+	defer cancel()
+	return tlsConn.HandshakeContext(ctx)
 }
 
 func updateConnContext(ctx context.Context, c net.Conn) context.Context {
@@ -274,4 +295,13 @@ func NewServer(ctx context.Context, handler http.Handler, tlsConfig *tls.Config)
 	server.ctx, server.ctxCancel = context.WithCancel(ctx)
 
 	return server
+}
+
+// https://github.com/golang/go/blob/release-branch.go1.22/src/net/http/server.go#L3826-L3834
+func tlsRecordHeaderLooksLikeHTTP(hdr [5]byte) bool {
+	switch string(hdr[:]) {
+	case "GET /", "HEAD ", "POST ", "PUT /", "OPTIO":
+		return true
+	}
+	return false
 }

@@ -28,6 +28,7 @@ const (
 	HTTPIdleTimeout           = 180 * time.Second
 	HTTPReadTimeout           = 60 * time.Second
 	HTTPWriteTimeout          = 60 * time.Second
+	TLSHandshakeTimeout       = 10 * time.Second
 	ReverseProxyFlushInterval = 100 * time.Millisecond
 )
 
@@ -112,6 +113,7 @@ func DefaultProxyServer(handler http.Handler, tlsConfig *tls.Config, verboseLogs
 	svr.HTTPServer.IdleTimeout = HTTPIdleTimeout
 	svr.HTTPServer.ReadTimeout = HTTPReadTimeout
 	svr.HTTPServer.WriteTimeout = HTTPWriteTimeout
+	svr.TLSHandshakeTimeout = TLSHandshakeTimeout
 
 	return svr
 }
