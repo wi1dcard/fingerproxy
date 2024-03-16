@@ -250,7 +250,7 @@ func (server *Server) logf(format string, args ...any) {
 	}
 }
 
-func (server *Server) vlogf(format string, args ...interface{}) {
+func (server *Server) vlogf(format string, args ...any) {
 	if server.VerboseLogs {
 		server.logf(format, args...)
 	}
