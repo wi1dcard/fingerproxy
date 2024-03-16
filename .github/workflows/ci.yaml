@@ -92,6 +92,7 @@ jobs:
           ./curl --version
       - name: Test
         run: |
+          chmod +x ./echo-server
           ./echo-server -verbose &
           sleep 1
           ./curl -v --fail --insecure -o o.json https://localhost:8443/json
@@ -121,6 +122,7 @@ jobs:
           ab -V
       - name: Test
         run: |
+          chmod +x ./echo-server
           ./echo-server &
           ECHOSERVER_PID=$!
           sleep 1
