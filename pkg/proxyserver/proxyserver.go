@@ -96,6 +96,8 @@ func (server *Server) serveConn(conn net.Conn) {
 		return
 	}
 
+	server.vlogf("client hello (%s): %x", conn.RemoteAddr().String(), rec)
+
 	cs := tlsConn.ConnectionState()
 
 	// either directly serve the http2 conn, or, send to the channel
