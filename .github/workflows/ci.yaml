@@ -66,8 +66,9 @@ jobs:
         run: |
           go version
           go get
-          go build -tags debug ./example/echo-server
-          go build -tags debug -o fingerproxy ./cmd
+          go build -o echo-server -tags debug ./example/echo-server
+          go build -o fingerproxy -tags debug ./cmd
+          go build -o e2e-memtest ./e2e/memtest
           ./testdata/gencert.sh
       - uses: actions/upload-artifact@v4
         with:
@@ -75,6 +76,7 @@ jobs:
           path: |
             echo-server
             fingerproxy
+            e2e-memtest
             tls.crt
             tls.key
 
@@ -108,6 +110,26 @@ jobs:
           test $(jq -r '.headers."X-Ja3-Fingerprint"' o.json) = "0149f47eabf9a20d0893e2a44e5a6323"
           test $(jq -r '.headers."X-Ja4-Fingerprint"' o.json) = "t13d3112h2_e8f1e7e78f70_6bebaf5329ac"
           test $(jq -r '.headers."User-Agent"' o.json) = "curl/8.6.0"
+
+  e2e-memtest:
+    name: E2E memtest
+    runs-on: ubuntu-latest
+    needs: build-test-deps
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ci-test-deps
+      - name: Test
+        run: |
+          chmod +x ./fingerproxy
+          chmod +x ./e2e-memtest
+          ./fingerproxy -verbose \
+            -listen-addr localhost:8443 \
+            -forward-url http://localhost:8000 &
+
+          sleep 1
+          ./e2e-memtest | tee -a $GITHUB_STEP_SUMMARY
 
   echo-load-test:
     name: Echo load test
