@@ -29,3 +29,6 @@ build_%:
 PKG_LIST = $(shell go list ./... | grep -v github.com/wi1dcard/fingerproxy/pkg/http2)
 test:
 	@go test -v $(PKG_LIST)
+
+benchmark:
+	@go test -v $(PKG_LIST) -run=NONE -bench=^Benchmark -benchmem -count=3 -cpu=2

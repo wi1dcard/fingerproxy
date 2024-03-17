@@ -18,10 +18,10 @@ jobs:
       - run: |
           go version
           go get
-      - name: make test
+      - name: Go test and benchmark
         run: |
           echo '```' >> $GITHUB_STEP_SUMMARY
-          make test >> $GITHUB_STEP_SUMMARY
+          ( make benchmark && make test ) | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
   build:
