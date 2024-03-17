@@ -49,8 +49,8 @@ var (
 
 	PrometheusRegistry = prometheus.NewRegistry()
 
-	GetHeaderInjectors             = DefaultHeaderInjectors
-	DefaultReverseProxyHTTPHandler = defaultReverseProxyHTTPHandler
+	GetHeaderInjectors         = DefaultHeaderInjectors
+	GetReverseProxyHTTPHandler = DefaultReverseProxyHTTPHandler
 )
 
 func InitFingerprint(verboseLogs bool) {
@@ -90,7 +90,7 @@ func StartPrometheusClient(listenAddr string) {
 	}))
 }
 
-func defaultReverseProxyHTTPHandler(forwardTo *url.URL) *reverseproxy.HTTPHandler {
+func DefaultReverseProxyHTTPHandler(forwardTo *url.URL) *reverseproxy.HTTPHandler {
 	return reverseproxy.NewHTTPHandler(
 		forwardTo,
 		&httputil.ReverseProxy{
@@ -172,7 +172,7 @@ func Run() {
 	InitFingerprint(*flagVerboseLogs)
 
 	server := DefaultProxyServer(
-		DefaultReverseProxyHTTPHandler(forwardTo),
+		GetReverseProxyHTTPHandler(forwardTo),
 		tlsConfig,
 		*flagVerboseLogs,
 	)
