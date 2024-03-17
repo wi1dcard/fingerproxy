@@ -109,8 +109,8 @@ jobs:
           test $(jq -r '.headers."X-Ja4-Fingerprint"' o.json) = "t13d3112h2_e8f1e7e78f70_6bebaf5329ac"
           test $(jq -r '.headers."User-Agent"' o.json) = "curl/8.6.0"
 
-  load-test:
-    name: Load test
+  echo-load-test:
+    name: Echo load test
     runs-on: ubuntu-latest
     needs: build-test-deps
     strategy:
@@ -132,13 +132,16 @@ jobs:
           sleep 1
 
           (
-            cat /proc/$!/status | grep VmRSS
+            printf '> ' && cat /proc/$!/status | grep VmRSS
+            echo "<details><summary>ab result</summary>"
             ab -n ${{ matrix.number_of_requests }} -c 10 https://localhost:8443/
-            cat /proc/$!/status | grep VmRSS
+            echo "</details>"
+            echo
+            printf '> ' && cat /proc/$!/status | grep VmRSS
           ) | tee -a $GITHUB_STEP_SUMMARY
 
-  benchmark:
-    name: Benchmark
+  echo-benchmark:
+    name: Echo benchmark
     runs-on: ubuntu-latest
     needs: build-test-deps
     steps:
@@ -153,14 +156,25 @@ jobs:
       - name: Benchmark
         run: |
           chmod +x ./echo-server
+          bench() {
+            (
+              printf '> ' && cat /proc/$!/status | grep VmRSS
+              echo '```'
+              wrk -d 30 -c 10 https://localhost:8443/
+              echo '```'
+              printf '> ' && cat /proc/$!/status | grep VmRSS
+            ) | tee -a $GITHUB_STEP_SUMMARY
+          }
+
           ./echo-server &
           sleep 1
+          echo "### echo server" >> $GITHUB_STEP_SUMMARY
+          bench
 
-          wrk -d 30 -c 10 https://localhost:8443/ | tee -a $GITHUB_STEP_SUMMARY
           kill $!
           sleep 1
 
           ./echo-server --benchmark-control-group &
           sleep 1
-
-          wrk -d 30 -c 10 https://localhost:8443/ | tee -a $GITHUB_STEP_SUMMARY
+          echo "### control group" >> $GITHUB_STEP_SUMMARY
+          bench
