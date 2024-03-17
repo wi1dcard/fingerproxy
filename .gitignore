@@ -3,3 +3,4 @@
 /testdata/*.crt
 /testdata/*.key
 /bin
+/fingerproxy
