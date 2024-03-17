@@ -96,6 +96,8 @@ func DefaultReverseProxyHTTPHandler(forwardTo *url.URL) *reverseproxy.HTTPHandle
 		&httputil.ReverseProxy{
 			ErrorLog:      ReverseProxyLog,
 			FlushInterval: ReverseProxyFlushInterval,
+			// TODO: customize transport
+			Transport: http.DefaultTransport.(*http.Transport).Clone(),
 		},
 		GetHeaderInjectors(),
 	)
