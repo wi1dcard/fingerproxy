@@ -124,7 +124,7 @@ jobs:
         run: |
           chmod +x ./fingerproxy
           chmod +x ./e2e-memtest
-          ./fingerproxy -verbose \
+          ./fingerproxy \
             -listen-addr localhost:8443 \
             -forward-url http://localhost:8000 &
 

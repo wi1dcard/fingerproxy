@@ -13,6 +13,9 @@ func wget(addr string) string {
 		panic(err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		panic(resp.Status)
+	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)

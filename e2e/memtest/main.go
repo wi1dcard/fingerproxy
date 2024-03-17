@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 )
@@ -13,6 +14,7 @@ import (
 const (
 	fingerproxyAddr      = "https://localhost:8443/"
 	fingerproxyDebugAddr = "http://localhost:9036/mem"
+	fingerproxyGcAddr    = "http://localhost:9036/gc"
 
 	backendListenAddr = "localhost:8000"
 
@@ -56,6 +58,8 @@ func slowBackend() {
 }
 
 func main() {
+	log.SetOutput(os.Stdout)
+
 	log.Printf("pre-check:")
 	fmt.Println(wget(fingerproxyDebugAddr))
 
@@ -86,6 +90,10 @@ func main() {
 	printOpenedConn()
 
 	log.Printf("conns closed:")
+	fmt.Println(wget(fingerproxyDebugAddr))
+
+	log.Printf("after gc:")
+	wget(fingerproxyGcAddr)
 	fmt.Println(wget(fingerproxyDebugAddr))
 }
 

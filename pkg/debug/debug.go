@@ -17,7 +17,7 @@ func StartDebugServer() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/gc", func(w http.ResponseWriter, r *http.Request) {
-		go debug.FreeOSMemory()
+		debug.FreeOSMemory()
 		w.WriteHeader(http.StatusNoContent)
 	})
 
