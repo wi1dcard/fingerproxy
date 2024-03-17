@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -139,6 +140,7 @@ func Run() {
 		envWithDefault("CERT_FILENAME", "tls.crt"),
 		"TLS certificate filename, equivalent to $CERT_FILENAME",
 	)
+
 	flagKeyFilename := flag.String(
 		"certkey-filename",
 		envWithDefault("CERTKEY_FILENAME", "tls.key"),
@@ -151,7 +153,18 @@ func Run() {
 		"Listening address of Prometheus metrics, equivalent to $METRICS_LISTEN_ADDR",
 	)
 
-	flagVerboseLogs := flag.Bool("verbose", false, "Enable verbose logs")
+	flagEnableKubernetesProbe := flag.Bool(
+		"enable-kubernetes-probe",
+		envWithDefaultBool("ENABLE_KUBERNETES_PROBE", true),
+		"Enable kubernetes liveness/readiness probe support, equivalent to $ENABLE_KUBERNETES_PROBE",
+	)
+
+	flagVerboseLogs := flag.Bool(
+		"verbose",
+		envWithDefaultBool("VERBOSE", false),
+		"Enable verbose logs, equivalent to $VERBOSE",
+	)
+
 	flagVersion := flag.Bool("version", false, "Print version and exit")
 	flag.Parse()
 
@@ -173,8 +186,13 @@ func Run() {
 
 	InitFingerprint(*flagVerboseLogs)
 
+	handler := GetReverseProxyHTTPHandler(forwardTo)
+	if *flagEnableKubernetesProbe {
+		handler.IsProbeRequest = reverseproxy.IsKubernetesProbeRequest
+	}
+
 	server := DefaultProxyServer(
-		GetReverseProxyHTTPHandler(forwardTo),
+		handler,
 		tlsConfig,
 		*flagVerboseLogs,
 	)
@@ -190,6 +208,17 @@ func Run() {
 func envWithDefault(key string, defaultVal string) string {
 	if envVal, ok := os.LookupEnv(key); ok {
 		return envVal
+	}
+	return defaultVal
+}
+
+func envWithDefaultBool(key string, defaultVal bool) bool {
+	if envVal, ok := os.LookupEnv(key); ok {
+		if strings.ToLower(envVal) == "true" {
+			return true
+		} else if strings.ToLower(envVal) == "false" {
+			return false
+		}
 	}
 	return defaultVal
 }
