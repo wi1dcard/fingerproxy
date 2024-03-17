@@ -68,7 +68,7 @@ jobs:
           go get
           go build -o echo-server -tags debug ./example/echo-server
           go build -o fingerproxy -tags debug ./cmd
-          go build -o e2e-memtest ./e2e/memtest
+          go build -C ./e2e/memtest/ -o $PWD/e2e-memtest .
           ./testdata/gencert.sh
       - uses: actions/upload-artifact@v4
         with:
