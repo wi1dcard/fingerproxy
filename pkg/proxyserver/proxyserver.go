@@ -83,7 +83,7 @@ func (server *Server) serveConn(conn net.Conn) {
 			io.WriteString(re.Conn, "HTTP/1.0 400 Bad Request\r\n\r\nClient sent an HTTP request to an HTTPS server.\n")
 		}
 
-		server.logf("tls handshake: %s", err)
+		server.logf("tls handshake error from %s: %s", conn.RemoteAddr(), err)
 		server.metricsRequestsTotalInc("0", "")
 		return
 	}
@@ -91,7 +91,7 @@ func (server *Server) serveConn(conn net.Conn) {
 	// client hello stored in hajackedConn while reading for real handshake
 	rec, err := hijackedConn.GetClientHello()
 	if err != nil {
-		server.logf("could not read client hello from: %s", err)
+		server.logf("could not read client hello from %s: %s", conn.RemoteAddr(), err)
 		server.metricsRequestsTotalInc("0", "")
 		return
 	}

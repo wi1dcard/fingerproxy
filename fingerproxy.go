@@ -3,6 +3,7 @@ package fingerproxy
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -91,12 +92,24 @@ func StartPrometheusClient(listenAddr string) {
 	}))
 }
 
+func proxyErrorHandler(rw http.ResponseWriter, req *http.Request, err error) {
+	ReverseProxyLog.Printf("proxy %s error (from %s): %v", req.URL.String(), req.RemoteAddr, err)
+
+	if errors.Is(err, context.DeadlineExceeded) ||
+		errors.Is(err, context.Canceled) {
+		rw.WriteHeader(http.StatusGatewayTimeout)
+	} else {
+		rw.WriteHeader(http.StatusBadGateway)
+	}
+}
+
 func DefaultReverseProxyHTTPHandler(forwardTo *url.URL) *reverseproxy.HTTPHandler {
 	return reverseproxy.NewHTTPHandler(
 		forwardTo,
 		&httputil.ReverseProxy{
 			ErrorLog:      ReverseProxyLog,
 			FlushInterval: ReverseProxyFlushInterval,
+			ErrorHandler:  proxyErrorHandler,
 			// TODO: customize transport
 			Transport: http.DefaultTransport.(*http.Transport).Clone(),
 		},
