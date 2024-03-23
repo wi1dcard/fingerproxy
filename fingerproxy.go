@@ -20,6 +20,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/wi1dcard/fingerproxy/pkg/debug"
 	"github.com/wi1dcard/fingerproxy/pkg/fingerprint"
+	"github.com/wi1dcard/fingerproxy/pkg/ja4pcap"
 	"github.com/wi1dcard/fingerproxy/pkg/proxyserver"
 	"github.com/wi1dcard/fingerproxy/pkg/reverseproxy"
 )
@@ -216,6 +217,8 @@ func Run() {
 	DefaultLog.Printf("server listening on %s", *flagListenAddr)
 	err = server.ListenAndServe(*flagListenAddr)
 	DefaultLog.Print(err)
+
+	ja4pcap.Hello()
 }
 
 func envWithDefault(key string, defaultVal string) string {
