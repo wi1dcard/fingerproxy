@@ -3,11 +3,14 @@ module github.com/wi1dcard/fingerproxy
 go 1.21.7
 
 require (
+	github.com/dreadl0ck/ja3 v1.0.5
 	github.com/dreadl0ck/tlsx v1.0.1-google-gopacket
+	github.com/google/gopacket v1.1.18
 	github.com/prometheus/client_golang v1.18.0
 	github.com/refraction-networking/utls v1.6.0
 	golang.org/x/net v0.19.0
 	golang.org/x/term v0.15.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -15,10 +18,11 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
+	github.com/dreadl0ck/ja3 v1.0.5 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
-	github.com/google/gopacket v1.1.18 // indirect
 	github.com/google/pprof v0.0.0-20231212022811-ec68065c825e // indirect
 	github.com/klauspost/compress v1.17.4 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/onsi/ginkgo/v2 v2.13.2 // indirect
 	github.com/onsi/gomega v1.30.0 // indirect
