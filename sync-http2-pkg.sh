@@ -1,4 +1,4 @@
-#!/bin/bash -xeuo pipefail
+#!/usr/bin/env -S bash -exuo pipefail
 
 TAG=v0.21.0
 TAG_ARCHIVE_FILENAME=$TAG.tar.gz
