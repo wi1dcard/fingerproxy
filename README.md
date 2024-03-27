@@ -1,11 +1,26 @@
 # Fingerproxy
 
-Inspired by [gospider007/fp](https://github.com/gospider007/fp). Fingerproxy is an HTTPS reverse proxy, despite, it calculates JA3, JA4, and Akamai HTTP2 fingerprints and adds them to forwarding request headers.
+Inspired by [gospider007/fp](https://github.com/gospider007/fp). Fingerproxy is an HTTPS reverse proxy. It creates JA3, JA4, Akamai HTTP2 fingerprints, and forwards to backend via HTTP request headers.
+
+```
+         TLS                            HTTP/1.1 or HTTP/2
+Client ------>   Fingerproxy    ------------------------------------>  HTTP Backend
+                (listens :443)    | With request headers:        |    (127.0.0.1:80)
+                                  | X-JA3-Fingerprint: abcd...   |
+                                  | X-JA4-Fingerprint: t13d...   |
+                                  | X-HTTP2-Fingerprint: 3:100...|
+```
+
+Fingerprints can be used for bot detection, DDoS mitigation, client identification, etc. To use these fingerprints, just get HTTP request headers in your backend apps.
+
+Fingerproxy is also a Go library, allows you implementing your own fingerprinting algorithm.
 
 ## Usage
 
 > [!TIP]
-> Download Fingerproxy binary from [latest GitHub Release](https://github.com/wi1dcard/fingerproxy/releases/latest). Try it in one minute:
+> Try fingerproxy in one minute:
+
+Fingerproxy binary is available in GitHub releases: https://github.com/wi1dcard/fingerproxy/releases
 
 ```bash
 # Generate fake certificates tls.crt and tls.key
@@ -20,7 +35,7 @@ openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 -days 3650 \
 curl "https://localhost:8443/anything?show_env=1" --insecure
 ```
 
-Fingerprint headers are added to the requests:
+Fingerprints are in the HTTP request headers:
 
 ```yaml
 {
@@ -37,22 +52,11 @@ Fingerprint headers are added to the requests:
 }
 ```
 
-In most Fingerproxy use cases, the traffic route would be:
-
-```
-         TLS                            HTTP/1.1 or HTTP/2
-Client ------>   Fingerproxy    ------------------------------------>  HTTP Backend
-                (listens :443)    | With request headers:        |   (127.0.0.1:8000)
-                                  | X-JA3-Fingerprint: abcd...   |
-                                  | X-JA4-Fingerprint: t13d...   |
-                                  | X-HTTP2-Fingerprint: 3:100...|
-```
-
 For the complete CLI options, see `fingerproxy --help`.
 
 ## Implement Your Fingerprinting Algorithm
 
-Take a look at [example/customize-fingerprint/](example/customize-fingerprint/), if you want to implement your own fingerprint algorithm with Fingerproxy. No code fork needed.
+Check out the example [`customize-fingerprint`](example/customize-fingerprint/). No code fork needed.
 
 ## Use as a Library
 
