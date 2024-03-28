@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -83,7 +84,14 @@ func (server *Server) serveConn(conn net.Conn) {
 			io.WriteString(re.Conn, "HTTP/1.0 400 Bad Request\r\n\r\nClient sent an HTTP request to an HTTPS server.\n")
 		}
 
-		server.logf("tls handshake error from %s: %s", conn.RemoteAddr(), err)
+		if errors.Is(err, context.Canceled) ||
+			errors.Is(err, io.EOF) ||
+			errors.Is(err, syscall.ECONNRESET) {
+			server.vlogf("tls handshake failed (%s), client error: %s", conn.RemoteAddr(), err)
+		} else {
+			server.logf("tls handshake error (%s): %s", conn.RemoteAddr(), err)
+		}
+
 		server.metricsRequestsTotalInc("0", "")
 		return
 	}
@@ -91,12 +99,12 @@ func (server *Server) serveConn(conn net.Conn) {
 	// client hello stored in hajackedConn while reading for real handshake
 	rec, err := hijackedConn.GetClientHello()
 	if err != nil {
-		server.logf("could not read client hello from %s: %s", conn.RemoteAddr(), err)
+		server.logf("could not read client hello (%s): %s", conn.RemoteAddr(), err)
 		server.metricsRequestsTotalInc("0", "")
 		return
 	}
 
-	server.vlogf("client hello (%s): %x", conn.RemoteAddr().String(), rec)
+	server.vlogf("client hello (%s): %x", conn.RemoteAddr(), rec)
 
 	cs := tlsConn.ConnectionState()
 
