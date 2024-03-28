@@ -13,12 +13,6 @@ import (
 const defaultMetricsPrefix = "fingerproxy"
 
 var (
-	// optional, prometheus metrics registry
-	MetricsRegistry *prometheus.Registry
-
-	// optional, prometheus metrics namespace, aka, prefix
-	MetricsPrefix string
-
 	fingerprintDurationMetric *prometheus.HistogramVec
 )
 
@@ -38,9 +32,7 @@ func NewFingerprintHeaderInjector(headerName string, fingerprintFunc Fingerprint
 		FingerprintFunc: fingerprintFunc,
 	}
 
-	registerMetrics()
-
-	if metricsRegistered() {
+	if fingerprintDurationMetric != nil {
 		i.FingerprintDurationSucceedMetric = fingerprintDurationMetric.WithLabelValues("1", headerName)
 		i.FingerprintDurationErrorMetric = fingerprintDurationMetric.WithLabelValues("0", headerName)
 	}
@@ -48,25 +40,17 @@ func NewFingerprintHeaderInjector(headerName string, fingerprintFunc Fingerprint
 	return i
 }
 
-func metricsRegistered() bool {
-	return fingerprintDurationMetric != nil
-}
+func RegisterDurationMetric(registry *prometheus.Registry, buckets []float64, prefix string) {
+	pm := promauto.With(registry)
 
-func registerMetrics() {
-	if MetricsRegistry == nil {
-		return
-	}
-	if metricsRegistered() {
-		return
+	if prefix == "" {
+		prefix = defaultMetricsPrefix
 	}
 
-	f := promauto.With(MetricsRegistry)
-
-	fingerprintDurationMetric = f.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: MetricsPrefix,
+	fingerprintDurationMetric = pm.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: prefix,
 		Name:      "fingerprint_duration_seconds",
-		// TODO: configurable buckets
-		Buckets: []float64{.00001, .00002, .00005, .0001, .0002, .0005, .001, .005, .01},
+		Buckets:   buckets,
 	}, []string{"ok", "header_name"})
 }
 

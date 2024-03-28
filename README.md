@@ -52,7 +52,7 @@ Fingerprints are in the HTTP request headers:
 }
 ```
 
-For the complete CLI options, see `fingerproxy --help`.
+Fingerproxy supports Kubernetes liveness probe and Prometheus metrics. For the complete CLI options, see `fingerproxy --help`.
 
 ## Implement Your Fingerprinting Algorithm
 

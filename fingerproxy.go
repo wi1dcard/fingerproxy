@@ -4,15 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -51,15 +48,8 @@ var (
 
 	PrometheusRegistry = prometheus.NewRegistry()
 
-	GetHeaderInjectors         = DefaultHeaderInjectors
-	GetReverseProxyHTTPHandler = DefaultReverseProxyHTTPHandler
+	GetHeaderInjectors = DefaultHeaderInjectors
 )
-
-func InitFingerprint(verboseLogs bool) {
-	fingerprint.VerboseLogs = verboseLogs
-	fingerprint.Logger = FingerprintLog
-	fingerprint.MetricsRegistry = PrometheusRegistry
-}
 
 func DefaultHeaderInjectors() []reverseproxy.HeaderInjector {
 	return []reverseproxy.HeaderInjector{
@@ -67,29 +57,6 @@ func DefaultHeaderInjectors() []reverseproxy.HeaderInjector {
 		fingerprint.NewFingerprintHeaderInjector("X-JA4-Fingerprint", fingerprint.JA4Fingerprint),
 		fingerprint.NewFingerprintHeaderInjector("X-HTTP2-Fingerprint", fingerprint.HTTP2Fingerprint),
 	}
-}
-
-func DefaultTLSConfig(certFile string, keyFile string) (*tls.Config, error) {
-	conf := &tls.Config{
-		NextProtos: []string{"h2", "http/1.1"},
-		MinVersion: tls.VersionTLS12,
-		MaxVersion: tls.VersionTLS13,
-	}
-
-	if tlsCert, err := tls.LoadX509KeyPair(certFile, keyFile); err != nil {
-		return nil, err
-	} else {
-		conf.Certificates = []tls.Certificate{tlsCert}
-	}
-
-	return conf, nil
-}
-
-func StartPrometheusClient(listenAddr string) {
-	PrometheusLog.Printf("server listening on %s", listenAddr)
-	go http.ListenAndServe(listenAddr, promhttp.HandlerFor(PrometheusRegistry, promhttp.HandlerOpts{
-		ErrorLog: PrometheusLog,
-	}))
 }
 
 func proxyErrorHandler(rw http.ResponseWriter, req *http.Request, err error) {
@@ -103,8 +70,8 @@ func proxyErrorHandler(rw http.ResponseWriter, req *http.Request, err error) {
 	}
 }
 
-func DefaultReverseProxyHTTPHandler(forwardTo *url.URL) *reverseproxy.HTTPHandler {
-	return reverseproxy.NewHTTPHandler(
+func defaultReverseProxyHTTPHandler(forwardTo *url.URL, headerInjectors []reverseproxy.HeaderInjector) http.Handler {
+	handler := reverseproxy.NewHTTPHandler(
 		forwardTo,
 		&httputil.ReverseProxy{
 			ErrorLog:      ReverseProxyLog,
@@ -113,15 +80,23 @@ func DefaultReverseProxyHTTPHandler(forwardTo *url.URL) *reverseproxy.HTTPHandle
 			// TODO: customize transport
 			Transport: http.DefaultTransport.(*http.Transport).Clone(),
 		},
-		GetHeaderInjectors(),
+		headerInjectors,
 	)
+
+	handler.PreserveHost = *flagPreserveHost
+
+	if *flagEnableKubernetesProbe {
+		handler.IsProbeRequest = reverseproxy.IsKubernetesProbeRequest
+	}
+
+	return handler
 }
 
-func DefaultProxyServer(handler http.Handler, tlsConfig *tls.Config, verboseLogs bool) *proxyserver.Server {
+func defaultProxyServer(handler http.Handler, tlsConfig *tls.Config) *proxyserver.Server {
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	svr := proxyserver.NewServer(ctx, handler, tlsConfig)
 
-	svr.VerboseLogs = verboseLogs
+	svr.VerboseLogs = *flagVerboseLogs
 	svr.ErrorLog = ProxyServerLog
 	svr.HTTPServer.ErrorLog = HTTPServerLog
 
@@ -135,103 +110,48 @@ func DefaultProxyServer(handler http.Handler, tlsConfig *tls.Config, verboseLogs
 	return svr
 }
 
+func initFingerprint() {
+	fingerprint.Logger = FingerprintLog
+	fingerprint.VerboseLogs = *flagVerboseLogs
+	fingerprint.RegisterDurationMetric(PrometheusRegistry, parseDurationMetricBuckets(), "")
+}
+
 func Run() {
-	flagListenAddr := flag.String(
-		"listen-addr",
-		envWithDefault("LISTEN_ADDR", ":443"),
-		"Listening address, equivalent to $LISTEN_ADDR",
+	// CLI
+	initFlags()
+	parseFlags()
+
+	// fingerprint package
+	initFingerprint()
+
+	// main TLS server
+	server := defaultProxyServer(
+		defaultReverseProxyHTTPHandler(
+			parseForwardURL(),
+			GetHeaderInjectors(),
+		),
+		&tls.Config{
+			NextProtos:   []string{"h2", "http/1.1"},
+			MinVersion:   tls.VersionTLS12,
+			MaxVersion:   tls.VersionTLS13,
+			Certificates: []tls.Certificate{parseTLSCerts()},
+		},
 	)
 
-	flagForwardURL := flag.String(
-		"forward-url",
-		envWithDefault("FORWARD_URL", "http://localhost:80"),
-		"Backend URL that the requests will be forwarded to, equivalent to $FORWARD_URL",
+	// metrics server
+	PrometheusLog.Printf("server listening on %s", *flagMetricsListenAddr)
+	go http.ListenAndServe(
+		*flagMetricsListenAddr,
+		promhttp.HandlerFor(PrometheusRegistry, promhttp.HandlerOpts{
+			ErrorLog: PrometheusLog,
+		}),
 	)
 
-	flagCertFilename := flag.String(
-		"cert-filename",
-		envWithDefault("CERT_FILENAME", "tls.crt"),
-		"TLS certificate filename, equivalent to $CERT_FILENAME",
-	)
-
-	flagKeyFilename := flag.String(
-		"certkey-filename",
-		envWithDefault("CERTKEY_FILENAME", "tls.key"),
-		"TLS certificate key file name, equivalent to $CERTKEY_FILENAME",
-	)
-
-	flagMetricsListenAddr := flag.String(
-		"metrics-listen-addr",
-		envWithDefault("METRICS_LISTEN_ADDR", ":9035"),
-		"Listening address of Prometheus metrics, equivalent to $METRICS_LISTEN_ADDR",
-	)
-
-	flagEnableKubernetesProbe := flag.Bool(
-		"enable-kubernetes-probe",
-		envWithDefaultBool("ENABLE_KUBERNETES_PROBE", true),
-		"Enable kubernetes liveness/readiness probe support, equivalent to $ENABLE_KUBERNETES_PROBE",
-	)
-
-	flagVerboseLogs := flag.Bool(
-		"verbose",
-		envWithDefaultBool("VERBOSE", false),
-		"Enable verbose logs, equivalent to $VERBOSE",
-	)
-
-	flagVersion := flag.Bool("version", false, "Print version and exit")
-	flag.Parse()
-
-	if *flagVersion {
-		fmt.Fprintln(os.Stderr, "Fingerproxy - https://github.com/wi1dcard/fingerproxy")
-		fmt.Fprintf(os.Stderr, "Version: %s (%s)\n", BuildTag, BuildCommit)
-		os.Exit(0)
-	}
-
-	forwardTo, err := url.Parse(*flagForwardURL)
-	if err != nil {
-		DefaultLog.Fatal(err)
-	}
-
-	tlsConfig, err := DefaultTLSConfig(*flagCertFilename, *flagKeyFilename)
-	if err != nil {
-		DefaultLog.Fatal(err)
-	}
-
-	InitFingerprint(*flagVerboseLogs)
-
-	handler := GetReverseProxyHTTPHandler(forwardTo)
-	if *flagEnableKubernetesProbe {
-		handler.IsProbeRequest = reverseproxy.IsKubernetesProbeRequest
-	}
-
-	server := DefaultProxyServer(
-		handler,
-		tlsConfig,
-		*flagVerboseLogs,
-	)
-
-	StartPrometheusClient(*flagMetricsListenAddr)
+	// debug server if binary build with `debug` tag
 	debug.StartDebugServer()
 
+	// start the main TLS server
 	DefaultLog.Printf("server listening on %s", *flagListenAddr)
-	err = server.ListenAndServe(*flagListenAddr)
+	err := server.ListenAndServe(*flagListenAddr)
 	DefaultLog.Print(err)
-}
-
-func envWithDefault(key string, defaultVal string) string {
-	if envVal, ok := os.LookupEnv(key); ok {
-		return envVal
-	}
-	return defaultVal
-}
-
-func envWithDefaultBool(key string, defaultVal bool) bool {
-	if envVal, ok := os.LookupEnv(key); ok {
-		if strings.ToLower(envVal) == "true" {
-			return true
-		} else if strings.ToLower(envVal) == "false" {
-			return false
-		}
-	}
-	return defaultVal
 }

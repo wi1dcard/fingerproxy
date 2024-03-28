@@ -244,25 +244,22 @@ func (server *Server) metricsRequestsTotalInc(ok string, negotiatedProtocol stri
 }
 
 func (server *Server) registerMetrics() {
-	if server.metricsRegistered() {
+	if server.MetricsRegistry == nil || server.metricsRegistered() {
 		return
 	}
-
-	if server.MetricsRegistry == nil {
-		return
-	}
+	pm := promauto.With(server.MetricsRegistry)
 
 	prefix := server.MetricsPrefix
 	if prefix == "" {
 		prefix = defaultMetricsPrefix
 	}
 
-	f := promauto.With(server.MetricsRegistry)
-
-	server.metricRequestsTotal = f.NewCounterVec(prometheus.CounterOpts{
+	server.metricRequestsTotal = pm.NewCounterVec(prometheus.CounterOpts{
 		Namespace: prefix,
 		Name:      "requests_total",
 	}, []string{"ok", "negotiated_protocol"})
+
+	// ...
 }
 
 func (server *Server) logf(format string, args ...any) {
