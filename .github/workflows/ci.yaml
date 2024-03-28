@@ -99,12 +99,19 @@ jobs:
           chmod +x ./fingerproxy
           ./fingerproxy -verbose \
             -listen-addr localhost:8443 \
-            -forward-url https://httpbin.org &
+            -forward-url https://httpbin.org \
+            -preserve-host &
 
           sleep 1
           ./curl -v --fail --insecure -o o.json "https://localhost:8443/anything?show_env=1"
 
           cat o.json | jq
+
+          test $(jq -r '.headers."Host"' o.json) = "localhost"
+
+          test $(jq -r '.headers."X-Forwarded-Host"' o.json) = "localhost"
+          test $(jq -r '.headers."X-Forwarded-Port"' o.json) = "443"
+          test $(jq -r '.headers."X-Forwarded-Proto"' o.json) = "https"
 
           test $(jq -r '.headers."X-Http2-Fingerprint"' o.json) = "3:100;4:10485760;2:0|1048510465|0|m,s,a,p"
           test $(jq -r '.headers."X-Ja3-Fingerprint"' o.json) = "0149f47eabf9a20d0893e2a44e5a6323"

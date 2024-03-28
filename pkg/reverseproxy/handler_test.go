@@ -26,7 +26,7 @@ func (w *dummyResponseWriter) Write(b []byte) (int, error) { return w.buf.Write(
 
 func dummyRequest(t *testing.T) *http.Request {
 	t.Helper()
-	req, err := http.NewRequest("GET", "https://httpbin.org/anything", nil)
+	req, err := http.NewRequest("GET", "https://dummy-host/anything", nil)
 	req.Header.Set("User-Agent", "dummy")
 	if err != nil {
 		t.Fatal(err)
@@ -70,7 +70,6 @@ func (i *dummyHeaderInjector) GetHeaderValue(req *http.Request) (string, error) 
 func TestInjectHeader(t *testing.T) {
 	hj := &dummyHeaderInjector{}
 	handler := NewHTTPHandler(dummyURL(t), &httputil.ReverseProxy{}, []HeaderInjector{hj})
-	handler.IsProbeRequest = IsKubernetesProbeRequest
 
 	w := &dummyResponseWriter{}
 	handler.ServeHTTP(w, dummyRequest(t))
@@ -78,6 +77,7 @@ func TestInjectHeader(t *testing.T) {
 	j := struct {
 		Headers struct {
 			Dummy string
+			Host  string
 		}
 	}{}
 
@@ -88,7 +88,36 @@ func TestInjectHeader(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if j.Headers.Host != "httpbin.org" {
+		t.Fatalf("expected header value %s, actual %s", "httpbin.org", j.Headers.Host)
+	}
+
 	if j.Headers.Dummy != "dummy-value" {
 		t.Fatalf("expected header value %s, actual %s", "dummy-value", j.Headers.Dummy)
+	}
+}
+
+func TestPreserveHost(t *testing.T) {
+	handler := NewHTTPHandler(dummyURL(t), &httputil.ReverseProxy{}, nil)
+	handler.PreserveHost = true
+
+	w := &dummyResponseWriter{}
+	handler.ServeHTTP(w, dummyRequest(t))
+
+	j := struct {
+		Headers struct {
+			Host string
+		}
+	}{}
+
+	t.Log(w.buf.String())
+
+	err := json.Unmarshal(w.buf.Bytes(), &j)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if j.Headers.Host != "dummy-host" {
+		t.Fatalf("expected header value %s, actual %s", "dummy-host", j.Headers.Host)
 	}
 }
