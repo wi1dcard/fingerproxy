@@ -109,7 +109,7 @@ jobs:
 
           test $(jq -r '.headers."Host"' o.json) = "localhost"
 
-          test $(jq -r '.headers."X-Forwarded-Host"' o.json) = "localhost"
+          test $(jq -r '.headers."X-Forwarded-Host"' o.json) = "localhost:8443"
           test $(jq -r '.headers."X-Forwarded-Port"' o.json) = "443"
           test $(jq -r '.headers."X-Forwarded-Proto"' o.json) = "https"
 
