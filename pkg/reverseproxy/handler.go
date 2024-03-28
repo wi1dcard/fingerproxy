@@ -9,11 +9,11 @@ import (
 )
 
 type HTTPHandler struct {
+	// required, internal reverse proxy that forwards the requests
+	reverseProxy *httputil.ReverseProxy
+
 	// required, the URL that requests will be forwarding to
 	To *url.URL
-
-	// required, internal reverse proxy that forwards the requests
-	ReverseProxy *httputil.ReverseProxy
 
 	// optional, preserve the host in outbound requests
 	PreserveHost bool
@@ -32,19 +32,17 @@ const (
 	ProbeResponse   = "OK"
 )
 
+// NewHTTPHandler creates an HTTP handler, changes `reverseProxy.Rewrite` to support request
+// header injection, then assigns `reverseProxy` to the handler which proxies requests to backend
 func NewHTTPHandler(to *url.URL, reverseProxy *httputil.ReverseProxy, headerInjectors []HeaderInjector) *HTTPHandler {
 	f := &HTTPHandler{
 		To:              to,
+		reverseProxy:    reverseProxy,
 		HeaderInjectors: headerInjectors,
-		ReverseProxy:    reverseProxy,
 	}
 
-	f.SetReverseProxyRewriteFunc()
+	f.reverseProxy.Rewrite = f.rewriteFunc
 	return f
-}
-
-func (f *HTTPHandler) SetReverseProxyRewriteFunc() {
-	f.ReverseProxy.Rewrite = f.rewriteFunc
 }
 
 func (f *HTTPHandler) rewriteFunc(r *httputil.ProxyRequest) {
@@ -71,7 +69,7 @@ func (f *HTTPHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte(ProbeResponse))
 		return
 	}
-	f.ReverseProxy.ServeHTTP(w, req)
+	f.reverseProxy.ServeHTTP(w, req)
 }
 
 func IsKubernetesProbeRequest(r *http.Request) bool {
@@ -80,8 +78,8 @@ func IsKubernetesProbeRequest(r *http.Request) bool {
 }
 
 func (f *HTTPHandler) logf(format string, args ...any) {
-	if f.ReverseProxy.ErrorLog != nil {
-		f.ReverseProxy.ErrorLog.Printf(format, args...)
+	if f.reverseProxy.ErrorLog != nil {
+		f.reverseProxy.ErrorLog.Printf(format, args...)
 	} else {
 		log.Printf(format, args...)
 	}
