@@ -84,9 +84,7 @@ func (server *Server) serveConn(conn net.Conn) {
 			io.WriteString(re.Conn, "HTTP/1.0 400 Bad Request\r\n\r\nClient sent an HTTP request to an HTTPS server.\n")
 		}
 
-		if errors.Is(err, context.Canceled) ||
-			errors.Is(err, io.EOF) ||
-			errors.Is(err, syscall.ECONNRESET) {
+		if isNetworkOrClientError(err) {
 			server.vlogf("tls handshake failed (%s), client error: %s", conn.RemoteAddr(), err)
 		} else {
 			server.logf("tls handshake error (%s): %s", conn.RemoteAddr(), err)
@@ -311,4 +309,14 @@ func tlsRecordHeaderLooksLikeHTTP(hdr [5]byte) bool {
 		return true
 	}
 	return false
+}
+
+func isNetworkOrClientError(err error) bool {
+	var netOpErr *net.OpError
+	return errors.Is(err, context.Canceled) ||
+		errors.Is(err, context.DeadlineExceeded) ||
+		errors.Is(err, io.EOF) ||
+		errors.Is(err, syscall.ECONNRESET) ||
+		// https://github.com/golang/go/blob/release-branch.go1.22/src/crypto/tls/conn.go#L724
+		(errors.As(err, &netOpErr) && netOpErr.Op == "remote error")
 }
