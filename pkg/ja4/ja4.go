@@ -15,7 +15,6 @@ const (
 	signatureAlgorithmSeparator             = ","
 )
 
-// TODO: add tests
 type JA4Fingerprint struct {
 	//
 	// JA4_a

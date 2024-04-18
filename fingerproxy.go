@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -22,15 +21,6 @@ import (
 )
 
 const logFlags = log.LstdFlags | log.Lshortfile | log.Lmsgprefix
-
-const (
-	// TODO: expose these values in CLI flags
-	HTTPIdleTimeout           = 180 * time.Second
-	HTTPReadTimeout           = 60 * time.Second
-	HTTPWriteTimeout          = 60 * time.Second
-	TLSHandshakeTimeout       = 10 * time.Second
-	ReverseProxyFlushInterval = 100 * time.Millisecond
-)
 
 var (
 	// values are from CI build
@@ -83,7 +73,7 @@ func defaultReverseProxyHTTPHandler(forwardTo *url.URL, headerInjectors []revers
 		forwardTo,
 		&httputil.ReverseProxy{
 			ErrorLog:      ReverseProxyLog,
-			FlushInterval: ReverseProxyFlushInterval,
+			FlushInterval: parseReverseProxyFlushInterval(),
 			ErrorHandler:  proxyErrorHandler,
 			// TODO: customize transport
 			Transport: http.DefaultTransport.(*http.Transport).Clone(),
@@ -110,10 +100,10 @@ func defaultProxyServer(handler http.Handler, tlsConfig *tls.Config) *proxyserve
 
 	svr.MetricsRegistry = PrometheusRegistry
 
-	svr.HTTPServer.IdleTimeout = HTTPIdleTimeout
-	svr.HTTPServer.ReadTimeout = HTTPReadTimeout
-	svr.HTTPServer.WriteTimeout = HTTPWriteTimeout
-	svr.TLSHandshakeTimeout = TLSHandshakeTimeout
+	svr.HTTPServer.IdleTimeout = parseHTTPIdleTimeout()
+	svr.HTTPServer.ReadTimeout = parseHTTPReadTimeout()
+	svr.HTTPServer.WriteTimeout = parseHTTPWriteTimeout()
+	svr.TLSHandshakeTimeout = parseTLSHandshakeTimeout()
 
 	return svr
 }
