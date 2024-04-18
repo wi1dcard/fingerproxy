@@ -33,12 +33,14 @@ const (
 )
 
 var (
-	// values from CI build
+	// values are from CI build
 	BuildCommit = "GIT_COMMIT_PLACEHOLDER"
 	BuildTag    = "GIT_TAG_PLACEHOLDER"
 )
 
 var (
+	// The loggers used by fingerproxy components
+
 	ProxyServerLog  = log.New(os.Stderr, "[proxyserver] ", logFlags)
 	HTTPServerLog   = log.New(os.Stderr, "[http] ", logFlags)
 	PrometheusLog   = log.New(os.Stderr, "[metrics] ", logFlags)
@@ -46,11 +48,17 @@ var (
 	FingerprintLog  = log.New(os.Stderr, "[fingerprint] ", logFlags)
 	DefaultLog      = log.New(os.Stderr, "[fingerproxy] ", logFlags)
 
+	// The Prometheus metric registry used by fingerproxy
 	PrometheusRegistry = prometheus.NewRegistry()
 
+	// The header injectors that injects fingerprint headers to forwarding requests,
+	// defaults to [fingerproxy.DefaultHeaderInjectors]
 	GetHeaderInjectors = DefaultHeaderInjectors
 )
 
+// DefaultHeaderInjectors is the default header injector set that injects JA3, JA4,
+// and Akamai HTTP2 fingerprints. Override [fingerproxy.GetHeaderInjectors] to replace
+// this to your own injectors.
 func DefaultHeaderInjectors() []reverseproxy.HeaderInjector {
 	return []reverseproxy.HeaderInjector{
 		fingerprint.NewFingerprintHeaderInjector("X-JA3-Fingerprint", fingerprint.JA3Fingerprint),
@@ -116,6 +124,8 @@ func initFingerprint() {
 	fingerprint.RegisterDurationMetric(PrometheusRegistry, parseDurationMetricBuckets(), "")
 }
 
+// Run fingerproxy. To customize the fingerprinting algorithms, use "header injectors".
+// See [fingerproxy.GetHeaderInjectors] for more info.
 func Run() {
 	// CLI
 	initFlags()
