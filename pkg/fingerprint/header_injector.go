@@ -51,6 +51,7 @@ func RegisterDurationMetric(registry *prometheus.Registry, buckets []float64, pr
 		Namespace: prefix,
 		Name:      "fingerprint_duration_seconds",
 		Buckets:   buckets,
+		Help:      "The duration of fingerprinting requests in seconds",
 	}, []string{"ok", "header_name"})
 }
 

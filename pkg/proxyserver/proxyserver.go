@@ -263,6 +263,7 @@ func (server *Server) registerMetrics() {
 	server.metricRequestsTotal = pm.NewCounterVec(prometheus.CounterOpts{
 		Namespace: prefix,
 		Name:      "requests_total",
+		Help:      "The total number of requests processed by fingerproxy",
 	}, []string{"ok", "negotiated_protocol"})
 
 	// ...
