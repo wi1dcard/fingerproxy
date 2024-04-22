@@ -1544,6 +1544,15 @@ func (sc *serverConn) processFrame(f Frame) error {
 				headers = append(headers, metadata.HeaderField(h))
 			}
 			md.HTTP2Frames.Headers = headers
+			if f.HasPriority() {
+				md.HTTP2Frames.Priorities = append(md.HTTP2Frames.Priorities,
+					metadata.Priority{
+						StreamId:  f.StreamID,
+						StreamDep: f.Priority.StreamDep,
+						Exclusive: f.Priority.Exclusive,
+						Weight:    f.Priority.Weight,
+					})
+			}
 		}
 		return sc.processHeaders(f)
 	case *WindowUpdateFrame:
