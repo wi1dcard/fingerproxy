@@ -11,8 +11,11 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/dreadl0ck/tlsx"
 	"github.com/wi1dcard/fingerproxy/pkg/debug"
 	"github.com/wi1dcard/fingerproxy/pkg/fingerprint"
+	"github.com/wi1dcard/fingerproxy/pkg/ja3"
+	"github.com/wi1dcard/fingerproxy/pkg/ja4"
 	"github.com/wi1dcard/fingerproxy/pkg/metadata"
 	"github.com/wi1dcard/fingerproxy/pkg/proxyserver"
 )
@@ -95,19 +98,21 @@ func echoServer(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	ja3, err := fingerprint.JA3Fingerprint(data)
+	_ja3 := &tlsx.ClientHelloBasic{}
+	err := _ja3.Unmarshal(data.ClientHelloRecord)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	ja4, err := fingerprint.JA4Fingerprint(data)
+	_ja4 := &ja4.JA4Fingerprint{}
+	err = _ja4.UnmarshalBytes(data.ClientHelloRecord, 't')
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	http2, err := fingerprint.HTTP2Fingerprint(data)
+	_http2, err := fingerprint.HTTP2Fingerprint(data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -118,15 +123,21 @@ func echoServer(w http.ResponseWriter, req *http.Request) {
 		json.NewEncoder(w).Encode(&map[string]any{
 			"user-agent":  req.UserAgent(),
 			"clienthello": fmt.Sprintf("%x", data.ClientHelloRecord),
-			"ja3":         ja3,
-			"ja4":         ja4,
-			"http2":       http2,
+			"ja3":         ja3.DigestHex(_ja3),
+			"ja4":         _ja4.String(),
+			"http2":       _http2,
+			"detail": map[string]any{
+				"ja3":      _ja3,
+				"ja4":      _ja4,
+				"http2":    data.HTTP2Frames,
+				"metadata": data,
+			},
 		})
 	} else {
 		fmt.Fprintf(w, "User-Agent: %s\n", req.UserAgent())
 		fmt.Fprintf(w, "TLS ClientHello Record: %x\n", data.ClientHelloRecord)
-		fmt.Fprintf(w, "JA3 fingerprint: %s\n", ja3)
-		fmt.Fprintf(w, "JA4 fingerprint: %s\n", ja4)
-		fmt.Fprintf(w, "HTTP2 fingerprint: %s\n", http2)
+		fmt.Fprintf(w, "JA3 fingerprint: %s\n", ja3.DigestHex(_ja3))
+		fmt.Fprintf(w, "JA4 fingerprint: %s\n", _ja4.String())
+		fmt.Fprintf(w, "HTTP2 fingerprint: %s\n", _http2)
 	}
 }
