@@ -118,6 +118,31 @@ jobs:
           test $(jq -r '.headers."X-Ja4-Fingerprint"' o.json) = "t13d3112h2_e8f1e7e78f70_6bebaf5329ac"
           test $(jq -r '.headers."User-Agent"' o.json) = "curl/8.6.0"
 
+  e2e-webbrowser:
+    name: E2E web browser test
+    runs-on: ubuntu-latest
+    needs: build-test-deps
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ci-test-deps
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test
+        run: |
+          chmod +x ./fingerproxy
+          ./fingerproxy -verbose \
+            -listen-addr localhost:8443 \
+            -forward-url https://httpbin.org \
+            -preserve-host &
+
+          cd ./e2e/webbrowser
+          pip install --user pipenv
+          pipenv install
+          pipenv run pytest -s
+
   e2e-memtest:
     name: E2E memtest
     runs-on: ubuntu-latest
@@ -137,6 +162,7 @@ jobs:
 
           sleep 1
           ./e2e-memtest | tee -a $GITHUB_STEP_SUMMARY
+
 
   echo-load-test:
     name: Echo load test
