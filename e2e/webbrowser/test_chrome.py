@@ -11,6 +11,8 @@ def test_chrome():
     print(driver.capabilities['browserVersion'])
 
     driver.get("https://localhost:8443/anything")
+    print(driver.page_source)
+
     content = driver.find_element(by=By.TAG_NAME, value='pre').text
     parsed_json = json.loads(content)
     print(parsed_json)
