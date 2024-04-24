@@ -4,3 +4,5 @@
 /testdata/*.key
 /bin
 /fingerproxy
+.pytest_cache
+__pycache__
