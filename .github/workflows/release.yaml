@@ -25,9 +25,8 @@ jobs:
 
       - run: make build
 
-      - run: |
-          cd ./example/echo-server
-          make build
+      - working-directory: ./example/echo-server
+        run: make build
 
       - name: Create release
         env:
@@ -39,5 +38,5 @@ jobs:
           RELEASE_NOTES=$(git log "$RANGE" --oneline --decorate)
 
           gh release create --notes "$RELEASE_NOTES" "$TAG" \
-            "./bin/*" \
-            "./example/echo-server/bin/*"
+            ./bin/* \
+            ./example/echo-server/bin/*
