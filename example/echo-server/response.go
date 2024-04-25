@@ -20,11 +20,11 @@ type echoResponse struct {
 }
 
 type detailResponse struct {
-	Metadata      *metadata.Metadata `json:"metadata"`
-	UserAgent     string             `json:"user_agent"`
-	JA3           *ja3Detail         `json:"ja3"`
-	JA3WithoutMD5 string             `json:"ja3-without-md5"`
-	JA4           *ja4Detail         `json:"ja4"`
+	Metadata  *metadata.Metadata `json:"metadata"`
+	UserAgent string             `json:"user_agent"`
+	JA3       *ja3Detail         `json:"ja3"`
+	JA3Raw    string             `json:"ja3_raw"`
+	JA4       *ja4Detail         `json:"ja4"`
 }
 
 func (r *echoResponse) fingerprintJA3() error {
@@ -38,7 +38,7 @@ func (r *echoResponse) fingerprintJA3() error {
 	ja3Raw := ja3.Bare(fp)
 
 	rd.JA3 = (*ja3Detail)(fp)
-	rd.JA3WithoutMD5 = string(ja3Raw)
+	rd.JA3Raw = string(ja3Raw)
 	r.JA3 = ja3.BareToDigestHex(ja3Raw)
 
 	r.logf("ja3: %s", r.JA3)
