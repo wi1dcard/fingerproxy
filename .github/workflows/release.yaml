@@ -25,6 +25,10 @@ jobs:
 
       - run: make build
 
+      - run: |
+          cd ./example/echo-server
+          make build
+
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -34,4 +38,6 @@ jobs:
           [[ -n $LAST_TAG ]] && RANGE=$LAST_TAG..HEAD || RANGE=HEAD
           RELEASE_NOTES=$(git log "$RANGE" --oneline --decorate)
 
-          gh release create --notes "$RELEASE_NOTES" "$TAG" bin/*
+          gh release create --notes "$RELEASE_NOTES" "$TAG" \
+            "./bin/*" \
+            "./example/echo-server/bin/*"
