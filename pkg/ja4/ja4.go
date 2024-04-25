@@ -30,11 +30,13 @@ type JA4Fingerprint struct {
 	//
 	// JA4_b
 	//
+
 	CipherSuites cipherSuites
 
 	//
 	// JA4_c
 	//
+
 	Extensions          extensions
 	SignatureAlgorithms signatureAlgorithms
 }

@@ -20,55 +20,58 @@ type echoResponse struct {
 }
 
 type detailResponse struct {
-	Metadata      *metadata.Metadata     `json:"metadata"`
-	UserAgent     string                 `json:"user-agent"`
-	JA3           *tlsx.ClientHelloBasic `json:"ja3"`
-	JA3WithoutMD5 string                 `json:"ja3-without-md5"`
-	JA4           *ja4.JA4Fingerprint    `json:"ja4"`
+	Metadata      *metadata.Metadata `json:"metadata"`
+	UserAgent     string             `json:"user-agent"`
+	JA3           *ja3Detail         `json:"ja3"`
+	JA3WithoutMD5 string             `json:"ja3-without-md5"`
+	JA4           *ja4Detail         `json:"ja4"`
 }
 
-func (response *echoResponse) fingerprintJA3() error {
-	detail := response.Detail
-	detail.JA3 = &tlsx.ClientHelloBasic{}
-	err := detail.JA3.Unmarshal(detail.Metadata.ClientHelloRecord)
+func (r *echoResponse) fingerprintJA3() error {
+	fp := &tlsx.ClientHelloBasic{}
+	rd := r.Detail
+	err := fp.Unmarshal(rd.Metadata.ClientHelloRecord)
 	if err != nil {
 		return err
 	}
 
-	ja3Raw := ja3.Bare(detail.JA3)
-	detail.JA3WithoutMD5 = string(ja3Raw)
-	response.JA3 = ja3.BareToDigestHex(ja3Raw)
+	ja3Raw := ja3.Bare(fp)
 
-	response.logf("ja3: %s", response.JA3)
+	rd.JA3 = (*ja3Detail)(fp)
+	rd.JA3WithoutMD5 = string(ja3Raw)
+	r.JA3 = ja3.BareToDigestHex(ja3Raw)
+
+	r.logf("ja3: %s", r.JA3)
 	return nil
 }
 
-func (response *echoResponse) fingerprintJA4() error {
-	detail := response.Detail
-	detail.JA4 = &ja4.JA4Fingerprint{}
-	err := detail.JA4.UnmarshalBytes(detail.Metadata.ClientHelloRecord, 't')
+func (r *echoResponse) fingerprintJA4() error {
+	fp := &ja4.JA4Fingerprint{}
+
+	err := fp.UnmarshalBytes(r.Detail.Metadata.ClientHelloRecord, 't')
 	if err != nil {
 		return err
 	}
 
-	response.JA4 = detail.JA4.String()
+	r.Detail.JA4 = (*ja4Detail)(fp)
+	r.JA4 = fp.String()
 
-	response.logf("ja4: %s", response.JA4)
+	r.logf("ja4: %s", r.JA4)
 	return nil
 }
 
-func (response *echoResponse) fingerrpintHTTP2() {
-	protocol := response.Detail.Metadata.ConnectionState.NegotiatedProtocol
+func (r *echoResponse) fingerrpintHTTP2() {
+	protocol := r.Detail.Metadata.ConnectionState.NegotiatedProtocol
 	if protocol == "h2" {
-		response.HTTP2 = response.Detail.Metadata.HTTP2Frames.String()
-		response.logf("http2: %s", response.HTTP2)
+		r.HTTP2 = r.Detail.Metadata.HTTP2Frames.String()
+		r.logf("http2: %s", r.HTTP2)
 	} else if *flagVerbose {
-		response.logf("protocol is %s, skipping HTTP2 fingerprinting", protocol)
+		r.logf("protocol is %s, skipping HTTP2 fingerprinting", protocol)
 	}
 }
 
-func (response *echoResponse) logf(format string, args ...any) {
+func (r *echoResponse) logf(format string, args ...any) {
 	if !*flagQuiet {
-		response.log.Printf(format, args...)
+		r.log.Printf(format, args...)
 	}
 }
