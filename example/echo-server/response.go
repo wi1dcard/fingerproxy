@@ -23,7 +23,7 @@ type detailResponse struct {
 	Metadata      *metadata.Metadata     `json:"metadata"`
 	UserAgent     string                 `json:"user-agent"`
 	JA3           *tlsx.ClientHelloBasic `json:"ja3"`
-	JA3WithoutMD5 []byte                 `json:"ja3-without-md5"`
+	JA3WithoutMD5 string                 `json:"ja3-without-md5"`
 	JA4           *ja4.JA4Fingerprint    `json:"ja4"`
 }
 
@@ -35,8 +35,9 @@ func (response *echoResponse) fingerprintJA3() error {
 		return err
 	}
 
-	detail.JA3WithoutMD5 = ja3.Bare(detail.JA3)
-	response.JA3 = ja3.BareToDigestHex(detail.JA3WithoutMD5)
+	ja3Raw := ja3.Bare(detail.JA3)
+	detail.JA3WithoutMD5 = string(ja3Raw)
+	response.JA3 = ja3.BareToDigestHex(ja3Raw)
 
 	response.logf("ja3: %s", response.JA3)
 	return nil
