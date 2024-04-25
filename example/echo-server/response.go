@@ -21,7 +21,7 @@ type echoResponse struct {
 
 type detailResponse struct {
 	Metadata      *metadata.Metadata `json:"metadata"`
-	UserAgent     string             `json:"user-agent"`
+	UserAgent     string             `json:"user_agent"`
 	JA3           *ja3Detail         `json:"ja3"`
 	JA3WithoutMD5 string             `json:"ja3-without-md5"`
 	JA4           *ja4Detail         `json:"ja4"`
