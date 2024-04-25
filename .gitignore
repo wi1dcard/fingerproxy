@@ -3,6 +3,7 @@
 /testdata/*.crt
 /testdata/*.key
 /bin
+/example/echo-server/bin
 /fingerproxy
 .pytest_cache
 __pycache__
