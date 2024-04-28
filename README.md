@@ -66,37 +66,37 @@ Here is an example [`echo-server`](example/echo-server/). Instead of forwarding 
 
 ## Similar Projects
 
-### [gospider007/fp](https://github.com/gospider007/fp)
+- [gospider007/fp](https://github.com/gospider007/fp)
 
-Great implementation based on golang net stack, works nice with golang HTTP handler. Fingerproxy rewrites TLS ClientHello capturing according to it.
+  Great implementation based on golang net stack, works nice with golang HTTP handler. Fingerproxy rewrites TLS ClientHello capturing according to it.
 
-Why not just use it?
+  Why I didn't use it?
 
-- The JA3 and JA4 implementations contain bugs. For example,
-  - In [fp.go](https://github.com/gospider007/ja3/blob/a58a93a771b99909e859ead9a9492015dd916947/fp.go#L337), `_` should be used instead of `,` as the separator of extensions and signature algorithms.
-  - In [fp.go](https://github.com/gospider007/ja3/blob/a58a93a771b99909e859ead9a9492015dd916947/fp.go#L80), the protocol version in ClientHello handshake should be used for JA3.
-  - In [ja3.go](https://github.com/gospider007/ja3/blob/a58a93a771b99909e859ead9a9492015dd916947/ja3.go#L769), `;` should be used instead of `,` as the parameters separator in HTTP2 settings frame.
-  - Priority frame used in HTTP2 fingerprinting has not implemented yet.
-- KISS
-  - JA4H can be calculated in backend applications. Do not do it in the reverse proxy.
-  - Complex design, unused methods, and copy-pastes from unknown source.
+  - The JA3 and JA4 implementations contain bugs. For example,
+    - In [fp.go](https://github.com/gospider007/ja3/blob/a58a93a771b99909e859ead9a9492015dd916947/fp.go#L337), `_` should be used instead of `,` as the separator of extensions and signature algorithms.
+    - In [fp.go](https://github.com/gospider007/ja3/blob/a58a93a771b99909e859ead9a9492015dd916947/fp.go#L80), the protocol version in ClientHello handshake should be used for JA3.
+    - In [ja3.go](https://github.com/gospider007/ja3/blob/a58a93a771b99909e859ead9a9492015dd916947/ja3.go#L769), `;` should be used instead of `,` as the parameters separator in HTTP2 settings frame.
+    - Priority frame used in HTTP2 fingerprinting has not implemented yet.
+  - KISS
+    - JA4H can be calculated in backend applications. Do not do it in the reverse proxy.
+    - Complex design, unused methods, and copy-pastes from unknown source.
 
-### [sleeyax/ja3rp](https://github.com/sleeyax/ja3rp)
+- [sleeyax/ja3rp](https://github.com/sleeyax/ja3rp)
 
-Discontinued.
+  Discontinued.
 
-### [h3adex/guardgress](https://github.com/h3adex/guardgress)
+- [h3adex/guardgress](https://github.com/h3adex/guardgress)
 
-Relies on [gospider007/fp](https://github.com/gospider007/fp).
+  Relies on [gospider007/fp](https://github.com/gospider007/fp).
 
-### [wwhtrbbtt/TrackMe](https://github.com/wwhtrbbtt/TrackMe)
+- [wwhtrbbtt/TrackMe](https://github.com/wwhtrbbtt/TrackMe)
 
-An HTTPS echo server that responds the fingerprints.
+  An HTTPS echo server that responds the fingerprints.
 
-Why not just use it?
+  Why I didn't use it?
 
-- It is not designed for forwarding the requests.
-- Bugs too. In [ja4.go](https://github.com/wwhtrbbtt/TrackMe/blob/41b7933efe9ea364ade88ac6ea0e79a7b0203227/ja4.go#L85), the padding extension (21) somehow has preserved. Therefore there would be two duplicated `21` extension which is incorrect.
+  - It is not designed for forwarding the requests.
+  - Bugs too. In [ja4.go](https://github.com/wwhtrbbtt/TrackMe/blob/41b7933efe9ea364ade88ac6ea0e79a7b0203227/ja4.go#L85), the padding extension (21) somehow has preserved. Therefore there would be two duplicated `21` extension which is incorrect.
 
 ## Useful Websites
 
