@@ -1,3 +1,4 @@
+// Package hack includes wraps and hacks of Go net stack.
 package hack
 
 import (

@@ -60,20 +60,9 @@ Check out the example [`customize-fingerprint`](example/customize-fingerprint/).
 
 ## Use as a Library
 
-Fingerproxy is degigned to be highly customizable. It's separated into [serveral packages](pkg/). Import them if you'd like to build your own fingerprinting server.
+Fingerproxy is degigned to be highly customizable. It is separated into serveral packages. You can find all packages in the [`pkg`](pkg/) dir and use them to build your own fingerprinting server.
 
-- `proxyserver` listens and accepts TLS connections. It captures data that is required for fingerprinting, for example, ClientHello and certain HTTP2 frames, then stores them into `metadata`.
-- `metadata` is a struct that stores data captured by `proxyserver` and will be used by `fingerprint`.
-- `fingerprint` parses `metadata` and calculate the JA3, JA4, HTTP2 fingerprints, etc. It also implement a `header_injector` from `reverseproxy`, which allows passing fingerprints to the forwarding requests.
-- `reverseproxy` forwards the requests to backends. It accepts `header_injectors` to add request headers to the forwarding request to downstream.
-
-A few special packages also included:
-
-- `ja4` implements JA4 algorithm based on [utls](https://github.com/refraction-networking/utls).
-- `hack` includes wraps and hacks of golang net stack.
-- `http2` is a fork of standard `http2` package in [`x/net`](https://github.com/golang/net/tree/master/http2). Fingerproxy syncs upstream using [./sync-http2-pkg.sh](./sync-http2-pkg.sh). Follow and sync upstream whenever you want.
-
-For example, use `proxyserver` and `fingerprint` packages to create an echo server. It simply outputs fingerprinting results. The full code is in [example/echo-server/](example/echo-server/).
+Here is an example [`echo-server`](example/echo-server/). Instead of forwarding HTTP requests, it simply responds back to client with the fingerprints.
 
 ## Similar Projects
 

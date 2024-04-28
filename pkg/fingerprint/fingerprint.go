@@ -1,3 +1,9 @@
+// Package `fingerprint` reads `metadata` and calculate the JA3, JA4,
+// HTTP2 fingerprints, etc.
+//
+// It also implements `header_injector` interface from package `reverseproxy`,
+// which allows passing fingerprints to the backend through the forwarding
+// request headers.
 package fingerprint
 
 import (

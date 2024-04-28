@@ -1,5 +1,7 @@
 //go:build debug
 
+// Package debug is a debug server. It is enabled only
+// if the `debug` tag is used when building fingerproxy.
 package debug
 
 import (
@@ -13,6 +15,7 @@ import (
 
 const listenAddr = "localhost:9036"
 
+// Start the debug server when build with build tag `debug`.
 func StartDebugServer() {
 	mux := http.NewServeMux()
 

@@ -1,3 +1,6 @@
+// Package `ja4` implements JA4 algorithm based on [utls].
+//
+// [utls]: https://github.com/refraction-networking/utls
 package ja4
 
 import (

@@ -1,3 +1,12 @@
+// Package `ja4pcap` is just a test helper for the `ja4` package that adopts
+// the test cases from the [official JA4 repo]. Fingerproxy does not import
+// this package.
+//
+// Maintainers should regularlly run ./sync-testdata.sh to follow the upstream.
+//
+// It is also a demonstration of using JA4 package with `gopacket`.
+//
+// [official JA4 repo]: https://github.com/FoxIO-LLC/ja4/tree/main/pcap
 package ja4pcap
 
 import (
@@ -13,14 +22,6 @@ import (
 	"github.com/google/gopacket/pcapgo"
 	"github.com/wi1dcard/fingerproxy/pkg/ja4"
 )
-
-// `ja4pcap` is just a test helper for the `ja4` package that adopts
-// the test cases from the official JA4 repo. Fingerproxy does not import
-// this package.
-//
-// Maintainers should regularlly run sync-ja4-test.sh to follow the upstream.
-//
-// It is also a demonstration of using JA4 package with `gopacket`.
 
 type pcapClientHello struct {
 	tcpStreamTuple

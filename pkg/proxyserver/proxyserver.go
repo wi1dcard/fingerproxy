@@ -1,3 +1,6 @@
+// Package `proxyserver` listens and accepts TLS connections. It captures data
+// that is required for fingerprinting; for example, the ClientHello record and
+// certain HTTP2 frames.
 package proxyserver
 
 import (

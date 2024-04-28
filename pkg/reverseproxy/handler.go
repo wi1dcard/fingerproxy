@@ -1,3 +1,6 @@
+// Package `reverseproxy` forwards the requests to backends. It gets
+// additional request headers from `header_injectors`, and adds to the
+// forwarding request to downstream.
 package reverseproxy
 
 import (
