@@ -17,28 +17,32 @@ func main() {
 	fingerproxy.GetHeaderInjectors = func() []reverseproxy.HeaderInjector {
 		i := fingerproxy.DefaultHeaderInjectors()
 		i = append(i, fingerprint.NewFingerprintHeaderInjector(
-			"X-MyExample-Fingerprint",
-			myFingerprint,
+			"X-My-Fingerprint",
+			SimpleFingerprint,
 		))
 		return i
 	}
 	fingerproxy.Run()
 }
 
-func myFingerprint(data *metadata.Metadata) (string, error) {
+func SimpleFingerprint(data *metadata.Metadata) (string, error) {
+	// parses client hello first
 	chs := &utls.ClientHelloSpec{}
 	err := chs.FromRaw(data.ClientHelloRecord, true, true)
 	if err != nil {
-		return "", fmt.Errorf("myFingerprint: %w", err)
+		return "", fmt.Errorf("simple fingerprint: %w", err)
 	}
 
+	// prepare fingerprint buffer
 	var buf strings.Builder
 	for _, e := range chs.Extensions {
-		var part string
+		var field string
 		switch e := e.(type) {
+		// use ALPN in the fingerprint
 		case *utls.ALPNExtension:
-			part = fmt.Sprintf("alpn:%s", strings.Join(e.AlpnProtocols, ","))
+			field = fmt.Sprintf("alpn:%s", joinAnything(e.AlpnProtocols, ","))
 
+		// use TLS supported version in the fingerprint
 		case *utls.SupportedVersionsExtension:
 			sv := []string{}
 			for _, v := range e.Versions {
@@ -48,17 +52,24 @@ func myFingerprint(data *metadata.Metadata) (string, error) {
 					sv = append(sv, strconv.Itoa(int(v)))
 				}
 			}
-			part = fmt.Sprintf("supported_versions:%s", strings.Join(sv, ","))
+			field = fmt.Sprintf("supported_versions:%s", joinAnything(sv, ","))
 		}
 
-		if part != "" {
+		// case ...:
+		// use any extension in your fingerprint
+		// ...
+
+		if field != "" {
 			if buf.Len() != 0 {
+				// add separator if needed
 				buf.WriteString("|")
 			}
-			buf.WriteString(part)
+			// add field
+			buf.WriteString(field)
 		}
 	}
 
+	// return fingerprint string
 	return buf.String(), nil
 }
 

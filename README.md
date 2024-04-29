@@ -90,7 +90,7 @@ The default Prometheus metrics server listens on `:9035`. Once new requests come
 
 ## Implement Your Fingerprinting Algorithm
 
-Check out the example [`customize-fingerprint`](example/customize-fingerprint/). No code fork needed.
+Check out the examples [`ja3-raw`](example/ja3-raw/) or [`my-fingerprint`](example/my-fingerprint/). No code fork needed.
 
 ## Use as a Library
 
