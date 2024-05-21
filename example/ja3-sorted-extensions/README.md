@@ -2,7 +2,7 @@
 
 JA3 is relatively old. The original implementation is outdated in certain use cases.
 
-For example, Google Chrome introduced a feature called [TLS ClientHello extension permutation](https://chromestatus.com/feature/5124606246518784). It makes the JA3 fingerprints changing every time while TLS handshaking, because of the randomized order of TLS extensions.
+For example, Google Chrome has a feature called [TLS ClientHello extension permutation](https://chromestatus.com/feature/5124606246518784). It permutes the set of TLS extensions sent in the ClientHello message, resulting in a different JA3 fingerprint with every new connection from the browser.
 
 Therefore we can no longer rely on the order of extensions. Sorting is necessary. Here is a very ugly example. It just demonstrates the possibility of extensibility of Fingerproxy. You might want to implement your own variant of JA3 fingerprint.
 
@@ -42,3 +42,8 @@ Output:
 ```
 
 Exit chrome and open again, you will see `X-Ja3-Fingerprint` changed but `X-Sorted-Ja3-Fingerprint` didn't.
+
+## More Information
+
+- <https://www.fastly.com/blog/a-first-look-at-chromes-tls-clienthello-permutation-in-the-wild/>
+- <https://github.com/net4people/bbs/issues/220>
