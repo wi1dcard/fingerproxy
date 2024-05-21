@@ -140,7 +140,7 @@ Here is an example [`echo-server`](example/echo-server/). Instead of forwarding 
 
 - <https://scrapfly.io/web-scraping-tools/ja3-fingerprint>
 
-  JA3 and HTTP2 fingerprint; JA3 result is probably incorrect (doesn't match Wireshark's result).
+  JA3 and HTTP2 fingerprint. As per the comment from Scrapfly team member, Scrapfly uses an improved variant of JA3 implementation. It makes more sense in real life use cases, however, please notice that these JA3 results are not comparable with others. For more information, please read issue [#14](https://github.com/wi1dcard/fingerproxy/issues/14).
 
 - <https://tls.peet.ws/>
 
