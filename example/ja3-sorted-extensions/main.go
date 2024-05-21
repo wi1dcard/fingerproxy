@@ -63,6 +63,6 @@ func fpSortedJA3(data *metadata.Metadata) (string, error) {
 	fields[2] = strings.Join(extensions, "-")
 	fp = strings.Join(fields, ",")
 
-	return fp, nil
-	// return ja3.BareToDigestHex([]byte(fp)), nil
+	// return fp, nil
+	return ja3.BareToDigestHex([]byte(fp)), nil
 }
