@@ -1,7 +1,7 @@
 .DS_Store
 /.vscode
-/testdata/*.crt
-/testdata/*.key
+*.crt
+*.key
 /bin
 /example/echo-server/bin
 /fingerproxy

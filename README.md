@@ -90,7 +90,11 @@ The default Prometheus metrics server listens on `:9035`. Once new requests come
 
 ## Implement Your Fingerprinting Algorithm
 
-Check out the example [`customize-fingerprint`](example/customize-fingerprint/). No code fork needed.
+Check out the examples [`ja3-raw`](example/ja3-raw/) or [`my-fingerprint`](example/my-fingerprint/). No code fork needed.
+
+## Chrome JA3 Fingerprints Change Every Time
+
+Yes, it is an known issue of the original JA3 implementation. See [Google Chrome TLS extension permutation](https://github.com/net4people/bbs/issues/220). Sorting the TLS extension is one method to avoid the affect of this feature. Here is an example [ja3-sorted-extensions](example/ja3-sorted-extensions/).
 
 ## Use as a Library
 
