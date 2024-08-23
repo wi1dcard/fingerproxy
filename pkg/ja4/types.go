@@ -29,8 +29,8 @@ func (x tlsVersion) String() string {
 	}
 	return "00"
 }
-func (x numberOfCipherSuites) String() string { return fmt.Sprintf("%02d", x) }
-func (x numberOfExtensions) String() string   { return fmt.Sprintf("%02d", x) }
+func (x numberOfCipherSuites) String() string { return fmt.Sprintf("%02d", min(x, 99)) }
+func (x numberOfExtensions) String() string   { return fmt.Sprintf("%02d", min(x, 99)) }
 func (x cipherSuites) String() string         { return joinUint16(x, cipherSuitesSeparator) }
 func (x extensions) String() string           { return joinUint16(x, extensionsSeparator) }
 func (x signatureAlgorithms) String() string  { return joinUint16(x, signatureAlgorithmSeparator) }
