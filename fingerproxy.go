@@ -14,6 +14,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/wi1dcard/fingerproxy/pkg/certwatcher"
 	"github.com/wi1dcard/fingerproxy/pkg/debug"
 	"github.com/wi1dcard/fingerproxy/pkg/fingerprint"
 	"github.com/wi1dcard/fingerproxy/pkg/proxyserver"
@@ -36,6 +37,7 @@ var (
 	PrometheusLog   = log.New(os.Stderr, "[metrics] ", logFlags)
 	ReverseProxyLog = log.New(os.Stderr, "[reverseproxy] ", logFlags)
 	FingerprintLog  = log.New(os.Stderr, "[fingerprint] ", logFlags)
+	CertWatcherLog  = log.New(os.Stderr, "[certwatcher] ", logFlags)
 	DefaultLog      = log.New(os.Stderr, "[fingerproxy] ", logFlags)
 
 	// The Prometheus metric registry used by fingerproxy
@@ -90,8 +92,7 @@ func defaultReverseProxyHTTPHandler(forwardTo *url.URL, headerInjectors []revers
 	return handler
 }
 
-func defaultProxyServer(handler http.Handler, tlsConfig *tls.Config) *proxyserver.Server {
-	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+func defaultProxyServer(ctx context.Context, handler http.Handler, tlsConfig *tls.Config) *proxyserver.Server {
 	svr := proxyserver.NewServer(ctx, handler, tlsConfig)
 
 	svr.VerboseLogs = *flagVerboseLogs
@@ -106,6 +107,25 @@ func defaultProxyServer(handler http.Handler, tlsConfig *tls.Config) *proxyserve
 	svr.TLSHandshakeTimeout = parseTLSHandshakeTimeout()
 
 	return svr
+}
+
+func initCertWatcher() *certwatcher.CertWatcher {
+	certwatcher.Logger = CertWatcherLog
+	certwatcher.VerboseLogs = *flagVerboseLogs
+	cw, err := certwatcher.New(*flagCertFilename, *flagKeyFilename)
+	if err != nil {
+		DefaultLog.Fatalf(`invalid cert filename "%s" or certkey filename "%s": %s`, *flagCertFilename, *flagKeyFilename, err)
+	}
+	return cw
+}
+
+func defaultTLSConfig(cw *certwatcher.CertWatcher) *tls.Config {
+	return &tls.Config{
+		NextProtos:     []string{"h2", "http/1.1"},
+		MinVersion:     tls.VersionTLS12,
+		MaxVersion:     tls.VersionTLS13,
+		GetCertificate: cw.GetCertificate,
+	}
 }
 
 func initFingerprint() {
@@ -124,19 +144,24 @@ func Run() {
 	// fingerprint package
 	initFingerprint()
 
+	// tls cert watcher
+	cw := initCertWatcher()
+
+	// signal cancels context
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+
 	// main TLS server
 	server := defaultProxyServer(
+		ctx,
 		defaultReverseProxyHTTPHandler(
 			parseForwardURL(),
 			GetHeaderInjectors(),
 		),
-		&tls.Config{
-			NextProtos:   []string{"h2", "http/1.1"},
-			MinVersion:   tls.VersionTLS12,
-			MaxVersion:   tls.VersionTLS13,
-			Certificates: []tls.Certificate{parseTLSCerts()},
-		},
+		defaultTLSConfig(cw),
 	)
+
+	// start cert watcher
+	go cw.Start(ctx)
 
 	// metrics server
 	PrometheusLog.Printf("server listening on %s", *flagMetricsListenAddr)

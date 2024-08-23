@@ -1,7 +1,6 @@
 package fingerproxy
 
 import (
-	"crypto/tls"
 	"flag"
 	"fmt"
 	"net/url"
@@ -139,14 +138,6 @@ func parseForwardURL() *url.URL {
 	}
 
 	return forwardURL
-}
-
-func parseTLSCerts() tls.Certificate {
-	tlsCert, err := tls.LoadX509KeyPair(*flagCertFilename, *flagKeyFilename)
-	if err != nil {
-		DefaultLog.Fatalf(`invalid cert filename "%s" or certkey filename "%s": %s`, *flagCertFilename, *flagKeyFilename, err)
-	}
-	return tlsCert
 }
 
 func parseDurationMetricBuckets() []float64 {
