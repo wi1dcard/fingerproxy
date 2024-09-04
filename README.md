@@ -3,12 +3,12 @@
 Inspired by [gospider007/fp](https://github.com/gospider007/fp). Fingerproxy is an HTTPS reverse proxy. It creates JA3, JA4, Akamai HTTP2 fingerprints, and forwards to backend via HTTP request headers.
 
 ```
-         TLS                            HTTP/1.1 or HTTP/2
-Client ------>   Fingerproxy    ------------------------------------>  HTTP Backend
-                (listens :443)    | With request headers:        |    (127.0.0.1:80)
-                                  | X-JA3-Fingerprint: abcd...   |
-                                  | X-JA4-Fingerprint: t13d...   |
-                                  | X-HTTP2-Fingerprint: 3:100...|
+         HTTPS                            HTTP/1.1 or HTTP/2
+Client ---------> Fingerproxy   -------------------------------------->  HTTP Backend
+                 (listens :443)    | Request headers:               |   (127.0.0.1:80)
+                                   |   X-JA3-Fingerprint: abcd...   |
+                                   |   X-JA4-Fingerprint: t13d...   |
+                                   |   X-HTTP2-Fingerprint: 3:100...|
 ```
 
 Fingerprints can be used for bot detection, DDoS mitigation, client identification, etc. To use these fingerprints, just extract the HTTP request headers in your backend apps.
@@ -27,17 +27,18 @@ Fingerproxy is also a Go library, which allows users implementing their own fing
       -addext "subjectAltName=DNS:localhost,DNS:*.localhost,IP:127.0.0.1"
     ```
 
-2. Download the [fingerproxy binary](https://github.com/wi1dcard/fingerproxy/releases) and run. The TLS server listens on `:8443`, forwarding requests to [httpbin](https://httpbin.org/).
+2. Download the [fingerproxy binary](https://github.com/wi1dcard/fingerproxy/releases) and run.
     ```bash
     ./fingerproxy -listen-addr :8443 -forward-url https://httpbin.org
     ```
+    Server listens on `:8443`, forwarding requests to [httpbin](https://httpbin.org/).
 
-3. We are ready to go. Send a request to fingerproxy:
+3. We are ready to go. Send an HTTPS request to fingerproxy:
     ```bash
     curl "https://localhost:8443/anything?show_env=1" --insecure
     ```
 
-    You will see that fingerprints are in HTTP request headers:
+    You will see fingerprints in request headers:
 
     ```yaml
     {
