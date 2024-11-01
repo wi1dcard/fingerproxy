@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -24,10 +25,17 @@ func (w *dummyResponseWriter) Header() http.Header {
 func (w *dummyResponseWriter) WriteHeader(statusCode int)  { w.code = statusCode }
 func (w *dummyResponseWriter) Write(b []byte) (int, error) { return w.buf.Write(b) }
 
+const (
+	dummyRemoteIP     = "1.1.1.1"
+	dummyForwardedFor = "172.17.0.1"
+)
+
 func dummyRequest(t *testing.T) *http.Request {
 	t.Helper()
-	req, err := http.NewRequest("GET", "https://dummy-host/anything", nil)
+	req, err := http.NewRequest("GET", "https://dummy-host/anything?show_env=1", nil)
+	req.RemoteAddr = dummyRemoteIP + ":30000"
 	req.Header.Set("User-Agent", "dummy")
+	req.Header.Set("X-Forwarded-For", dummyForwardedFor)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,5 +127,29 @@ func TestPreserveHost(t *testing.T) {
 
 	if j.Headers.Host != "dummy-host" {
 		t.Fatalf("expected header value %s, actual %s", "dummy-host", j.Headers.Host)
+	}
+}
+
+func TestAppendForwardHeader(t *testing.T) {
+	handler := NewHTTPHandler(dummyURL(t), &httputil.ReverseProxy{}, nil)
+
+	w := &dummyResponseWriter{}
+	handler.ServeHTTP(w, dummyRequest(t))
+
+	j := struct {
+		Headers struct {
+			XForwardedFor string `json:"x-forwarded-for"`
+		}
+	}{}
+
+	t.Log(w.buf.String())
+
+	err := json.Unmarshal(w.buf.Bytes(), &j)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.HasPrefix(j.Headers.XForwardedFor, "172.17.0.1, 1.1.1.1") {
+		t.Fatalf("expected header value %s, actual %s", "dummy-host", j.Headers.XForwardedFor)
 	}
 }
