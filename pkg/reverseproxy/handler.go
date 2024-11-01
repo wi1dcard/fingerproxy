@@ -50,6 +50,7 @@ func NewHTTPHandler(to *url.URL, reverseProxy *httputil.ReverseProxy, headerInje
 
 func (f *HTTPHandler) rewriteFunc(r *httputil.ProxyRequest) {
 	r.SetURL(f.To)
+	r.Out.Header["X-Forwarded-For"] = r.In.Header["X-Forwarded-For"]
 	r.SetXForwarded()
 
 	if f.PreserveHost {
