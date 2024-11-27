@@ -22,6 +22,7 @@ var (
 
 	// functionality
 	flagPreserveHost              *bool
+	flagMaxHTTP2PriorityFrames    *uint
 	flagEnableKubernetesProbe     *bool
 	flagReverseProxyFlushInterval *string
 
@@ -74,6 +75,12 @@ func initFlags() {
 		"preserve-host",
 		envWithDefaultBool("PRESERVE_HOST", false),
 		"Forward HTTP Host header from incoming requests to the backend, equivalent to $PRESERVE_HOST",
+	)
+
+	flagMaxHTTP2PriorityFrames = flag.Uint(
+		"max-h2-priority-frames",
+		envWithDefaultUint("MAX_H2_PRIORITY_FRAMES", 10000),
+		"Max number of HTTP2 priority frames, set this to avoid too large HTTP2 fingerprints",
 	)
 
 	flagEnableKubernetesProbe = flag.Bool(
