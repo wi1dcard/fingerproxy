@@ -26,6 +26,7 @@ jobs:
       - name: Test HTTP2 max priority frames
         run: |
           cd example/http2-fingerprint-dos-poc
+          ../../testdata/gencert.sh
           go run -ldflags '-X main.isCI=true' .
 
   build:
@@ -166,7 +167,6 @@ jobs:
 
           sleep 1
           ./e2e-memtest | tee -a $GITHUB_STEP_SUMMARY
-
 
   echo-load-test:
     name: Echo load test
