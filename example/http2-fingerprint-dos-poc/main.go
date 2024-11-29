@@ -3,11 +3,15 @@ package main
 import (
 	"bufio"
 	"crypto/tls"
+	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/http/httptrace"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/wi1dcard/fingerproxy"
@@ -31,6 +35,9 @@ See below example.
 */
 
 const numberOfPriorityFrames = 500
+const limitPriorityFrames = 20
+
+var isCI = "false"
 
 func main() {
 	// fingerproxy no limit, header is long:
@@ -44,7 +51,18 @@ func main() {
 	// url := "https://tls.peet.ws/api/clean"
 
 	time.Sleep(1 * time.Second)
-	sendRequest(url)
+	resp := sendRequest(url)
+	log.Print(string(resp))
+
+	// below is for CI
+	if isCI == "true" {
+		err := assertResponse(resp)
+		if err != nil {
+			log.Fatal(err)
+		} else {
+			log.Print("response asserted")
+		}
+	}
 }
 
 func launchFingerproxy() (url string) {
@@ -54,12 +72,12 @@ func launchFingerproxy() (url string) {
 }
 
 func launchFingerproxyWithPriorityFramesLimit() (url string) {
-	os.Args = []string{os.Args[0], "-listen-addr=localhost:8443", "-forward-url=https://httpbin.org", "-max-h2-priority-frames=20"}
+	os.Args = []string{os.Args[0], "-listen-addr=localhost:8443", "-forward-url=https://httpbin.org", "-max-h2-priority-frames", strconv.Itoa(limitPriorityFrames)}
 	go fingerproxy.Run()
 	return "https://localhost:8443/headers"
 }
 
-func sendRequest(url string) {
+func sendRequest(url string) []byte {
 	req, _ := http.NewRequest("GET", url, nil)
 
 	trace := &httptrace.ClientTrace{
@@ -81,9 +99,37 @@ func sendRequest(url string) {
 
 	if b, err := io.ReadAll(resp.Body); err != nil {
 		log.Fatal(err)
+		return nil
 	} else {
-		log.Println(string(b))
+		return b
 	}
+}
+
+func assertResponse(resp []byte) error {
+	var parsed struct {
+		Headers struct {
+			XHTTP2Fingerprint string `json:"X-Http2-Fingerprint"`
+		}
+	}
+
+	err := json.Unmarshal(resp, &parsed)
+	if err != nil {
+		return err
+	}
+
+	fp := parsed.Headers.XHTTP2Fingerprint
+	parts := strings.Split(fp, "|")
+	if len(parts) != 4 {
+		return fmt.Errorf("incorrect http2 fingerprint format: %s", fp)
+	}
+
+	priorities := strings.Split(parts[2], ",")
+	expect := limitPriorityFrames
+	got := len(priorities)
+	if got != expect {
+		return fmt.Errorf("expect %d priority frames, got %d: %s", expect, got, parts[2])
+	}
+	return nil
 }
 
 func gotConn(info httptrace.GotConnInfo) {

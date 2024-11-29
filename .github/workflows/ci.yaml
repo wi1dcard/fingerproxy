@@ -23,6 +23,10 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           ( make benchmark && make test ) | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+      - name: Test HTTP2 max priority frames
+        run: |
+          cd example/http2-fingerprint-dos-poc
+          go run -ldflags '-X main.isCI=true' .
 
   build:
     name: Build
