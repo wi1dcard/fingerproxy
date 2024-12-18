@@ -22,6 +22,7 @@ build_%:
 
 	go build -o $(BINPATH) \
 		-ldflags "-X main.buildCommit=$(COMMIT) -X main.buildVersion=$(TAG)" \
+		-gcflags "-m" \
 		./cmd
 
 	chmod +x $(BINPATH)
