@@ -3,6 +3,7 @@ package metadata
 import (
 	"bytes"
 	"fmt"
+	"math"
 )
 
 // https://github.com/golang/net/blob/5a444b4f2fe893ea00f0376da46aa5376c3f3e28/http2/http2.go#L112-L119
@@ -39,8 +40,12 @@ type HTTP2FingerprintingFrames struct {
 	Headers []HeaderField
 }
 
-// TODO: add tests
 func (f *HTTP2FingerprintingFrames) String() string {
+	return f.Marshal(math.MaxUint)
+}
+
+// TODO: add tests
+func (f *HTTP2FingerprintingFrames) Marshal(maxPriorityFrames uint) string {
 	var buf bytes.Buffer
 
 	// SETTINGS frame
@@ -60,11 +65,14 @@ func (f *HTTP2FingerprintingFrames) String() string {
 	buf.WriteString(fmt.Sprintf("%02d|", f.WindowUpdateIncrement))
 
 	// PRIORITY frame
-	if len(f.Priorities) == 0 {
+	if l := len(f.Priorities); uint(l) < maxPriorityFrames {
+		maxPriorityFrames = uint(l)
+	}
+	if maxPriorityFrames == 0 {
 		// If this feature does not exist, the value should be ‘0’.
 		buf.WriteString("0|")
 	} else {
-		for i, p := range f.Priorities {
+		for i, p := range f.Priorities[:maxPriorityFrames] {
 			if i != 0 {
 				// Multiple priority frames are concatenated by a comma (,).
 				buf.WriteString(",")

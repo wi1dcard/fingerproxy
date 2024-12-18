@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"log"
+	"math"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -16,7 +17,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/wi1dcard/fingerproxy/pkg/certwatcher"
 	"github.com/wi1dcard/fingerproxy/pkg/debug"
-	"github.com/wi1dcard/fingerproxy/pkg/fingerprint"
+	fp "github.com/wi1dcard/fingerproxy/pkg/fingerprint"
 	"github.com/wi1dcard/fingerproxy/pkg/proxyserver"
 	"github.com/wi1dcard/fingerproxy/pkg/reverseproxy"
 )
@@ -52,10 +53,17 @@ var (
 // and Akamai HTTP2 fingerprints. Override [fingerproxy.GetHeaderInjectors] to replace
 // this to your own injectors.
 func DefaultHeaderInjectors() []reverseproxy.HeaderInjector {
+	h2fp := &fp.HTTP2FingerprintParam{}
+	if flagMaxHTTP2PriorityFrames == nil { // if CLI flags are not initialized
+		h2fp.MaxPriorityFrames = math.MaxUint
+	} else {
+		h2fp.MaxPriorityFrames = *flagMaxHTTP2PriorityFrames
+	}
+
 	return []reverseproxy.HeaderInjector{
-		fingerprint.NewFingerprintHeaderInjector("X-JA3-Fingerprint", fingerprint.JA3Fingerprint),
-		fingerprint.NewFingerprintHeaderInjector("X-JA4-Fingerprint", fingerprint.JA4Fingerprint),
-		fingerprint.NewFingerprintHeaderInjector("X-HTTP2-Fingerprint", fingerprint.HTTP2Fingerprint),
+		fp.NewFingerprintHeaderInjector("X-JA3-Fingerprint", fp.JA3Fingerprint),
+		fp.NewFingerprintHeaderInjector("X-JA4-Fingerprint", fp.JA4Fingerprint),
+		fp.NewFingerprintHeaderInjector("X-HTTP2-Fingerprint", h2fp.HTTP2Fingerprint),
 	}
 }
 
@@ -129,9 +137,9 @@ func defaultTLSConfig(cw *certwatcher.CertWatcher) *tls.Config {
 }
 
 func initFingerprint() {
-	fingerprint.Logger = FingerprintLog
-	fingerprint.VerboseLogs = *flagVerboseLogs
-	fingerprint.RegisterDurationMetric(PrometheusRegistry, parseDurationMetricBuckets(), "")
+	fp.Logger = FingerprintLog
+	fp.VerboseLogs = *flagVerboseLogs
+	fp.RegisterDurationMetric(PrometheusRegistry, parseDurationMetricBuckets(), "")
 }
 
 // Run fingerproxy. To customize the fingerprinting algorithms, use "header injectors".

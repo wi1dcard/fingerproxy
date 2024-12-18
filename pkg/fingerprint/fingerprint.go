@@ -55,11 +55,15 @@ func JA3Fingerprint(data *metadata.Metadata) (string, error) {
 	return fp, nil
 }
 
-// HTTP2Fingerprint is a FingerprintFunc, it output the Akamai HTTP2 fingerprint
+type HTTP2FingerprintParam struct {
+	MaxPriorityFrames uint
+}
+
+// HTTP2Fingerprint is a FingerprintFunc, it creates Akamai HTTP2 fingerprints
 // as the suggested format: S[;]|WU|P[,]#|PS[,]
-func HTTP2Fingerprint(data *metadata.Metadata) (string, error) {
+func (p *HTTP2FingerprintParam) HTTP2Fingerprint(data *metadata.Metadata) (string, error) {
 	if data.ConnectionState.NegotiatedProtocol == "h2" {
-		fp := data.HTTP2Frames.String()
+		fp := data.HTTP2Frames.Marshal(p.MaxPriorityFrames)
 		vlogf("http2 fingerprint: %s", fp)
 		return fp, nil
 	}
