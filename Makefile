@@ -22,7 +22,8 @@ build_%:
 
 	go build -o $(BINPATH) \
 		-ldflags "-X main.buildCommit=$(COMMIT) -X main.buildVersion=$(TAG)" \
-		-gcflags "-m" \
+		-gcflags "./...=-m" \
+		-gcflags "./pkg/http2=" \
 		./cmd
 
 	chmod +x $(BINPATH)
