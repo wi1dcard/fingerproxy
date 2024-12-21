@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -266,7 +265,7 @@ func TestNoUnicodeStrings(t *testing.T) {
 			return nil
 		}
 
-		contents, err := ioutil.ReadFile(path)
+		contents, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -283,4 +282,12 @@ func TestNoUnicodeStrings(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// must returns v if err is nil, or panics otherwise.
+func must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return v
 }
