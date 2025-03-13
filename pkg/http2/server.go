@@ -1644,7 +1644,9 @@ func (sc *serverConn) processFrame(f Frame) error {
 		return sc.processHeaders(f)
 	case *WindowUpdateFrame:
 		if md, ok := metadata.FromContext(sc.baseCtx); ok {
-			md.HTTP2Frames.WindowUpdateIncrement = f.Increment
+			if md.HTTP2Frames.WindowUpdateIncrement == 0 {
+				md.HTTP2Frames.WindowUpdateIncrement = f.Increment
+			}
 		}
 		return sc.processWindowUpdate(f)
 	case *PingFrame:
