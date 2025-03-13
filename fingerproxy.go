@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"math"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -47,6 +48,10 @@ var (
 	// The header injectors that injects fingerprint headers to forwarding requests,
 	// defaults to [fingerproxy.DefaultHeaderInjectors]
 	GetHeaderInjectors = DefaultHeaderInjectors
+
+	// DefaultListener is the default listener that listens on the given address
+	// defaults use net.Listen("tcp", addr)
+	DefaultListener = defaultListener
 )
 
 // DefaultHeaderInjectors is the default header injector set that injects JA3, JA4,
@@ -117,6 +122,10 @@ func defaultProxyServer(ctx context.Context, handler http.Handler, tlsConfig *tl
 	return svr
 }
 
+func defaultListener(addr string) (net.Listener, error) {
+	return net.Listen("tcp", addr)
+}
+
 func initCertWatcher() *certwatcher.CertWatcher {
 	certwatcher.Logger = CertWatcherLog
 	certwatcher.VerboseLogs = *flagVerboseLogs
@@ -184,7 +193,11 @@ func Run() {
 	debug.StartDebugServer()
 
 	// start the main TLS server
+	ln, err := DefaultListener(*flagListenAddr)
+	if err != nil {
+		DefaultLog.Fatalf("error listening on %s: %s", *flagListenAddr, err)
+	}
 	DefaultLog.Printf("server listening on %s", *flagListenAddr)
-	err := server.ListenAndServe(*flagListenAddr)
+	err = server.Serve(ln)
 	DefaultLog.Print(err)
 }
