@@ -13,9 +13,13 @@ build_%_amd64: GOARCH = amd64
 build_%_arm: GOARCH = arm
 build_%_arm64: GOARCH = arm64
 
-BINPATH = bin/$(TARGET)_$(GOOS)_$(GOARCH)$(EXT)
+BINDIR = bin
+BINPATH = $(BINDIR)/$(TARGET)_$(GOOS)_$(GOARCH)$(EXT)
 
 build_%:
 	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(BINPATH) .
 
 	chmod +x $(BINPATH)
+
+sha256sum:
+	cd $(BINDIR) && sha256sum $(TARGET)_* > $(TARGET).sha256sum

@@ -15,7 +15,8 @@ build_%_arm64: GOARCH = arm64
 
 COMMIT = $(shell git rev-parse --short HEAD || true)
 TAG = $(shell git describe --tags --abbrev=0 HEAD 2>/dev/null || true)
-BINPATH = bin/$(TARGET)_$(GOOS)_$(GOARCH)$(EXT)
+BINDIR = bin
+BINPATH = $(BINDIR)/$(TARGET)_$(GOOS)_$(GOARCH)$(EXT)
 
 build_%:
 	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(BINPATH) \
@@ -25,6 +26,9 @@ build_%:
 		./cmd
 
 	chmod +x $(BINPATH)
+
+sha256sum:
+	cd $(BINDIR) && sha256sum $(TARGET)_* > $(TARGET).sha256sum
 
 PKG_LIST = $(shell go list ./... | grep -v github.com/wi1dcard/fingerproxy/pkg/http2)
 test:
