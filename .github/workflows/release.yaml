@@ -23,10 +23,14 @@ jobs:
           go version
           go get
 
-      - run: make build
+      - run: |
+          make build
+          make sha256sum
 
       - working-directory: ./example/echo-server
-        run: make build
+        run: |
+          make build
+          make sha256sum
 
       - name: Create release
         env:

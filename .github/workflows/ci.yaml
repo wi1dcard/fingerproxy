@@ -41,7 +41,10 @@ jobs:
       - run: |
           go version
           go get
-      - run: make build
+
+      - run: |
+          make build
+          make sha256sum
 
       - name: Extract short commit SHA
         id: short-sha
