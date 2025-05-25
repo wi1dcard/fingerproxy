@@ -16,8 +16,6 @@ build_%_arm64: GOARCH = arm64
 BINPATH = bin/$(TARGET)_$(GOOS)_$(GOARCH)$(EXT)
 
 build_%:
-	export GOOS=$(GOOS) GOARCH=$(GOARCH)
-
-	go build -o $(BINPATH) .
+	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(BINPATH) .
 
 	chmod +x $(BINPATH)

@@ -18,9 +18,7 @@ TAG = $(shell git describe --tags --abbrev=0 HEAD 2>/dev/null || true)
 BINPATH = bin/$(TARGET)_$(GOOS)_$(GOARCH)$(EXT)
 
 build_%:
-	export GOOS=$(GOOS) GOARCH=$(GOARCH)
-
-	go build -o $(BINPATH) \
+	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(BINPATH) \
 		-ldflags "-X main.buildCommit=$(COMMIT) -X main.buildVersion=$(TAG)" \
 		-gcflags "./...=-m" \
 		-gcflags "./pkg/http2=" \
