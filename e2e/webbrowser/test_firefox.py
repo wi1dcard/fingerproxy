@@ -17,6 +17,7 @@ def test_firefox():
     content = driver.find_element(by=By.TAG_NAME, value='pre').text
     parsed_json = json.loads(content)
 
+    # firefox verison: 138.0.1
     assert parsed_json["headers"]["X-Http2-Fingerprint"] == "1:65536;2:0;4:131072;5:16384|12517377|3:0:0:22|m,p,a,s"
     assert parsed_json["headers"]["X-Ja3-Fingerprint"] == "6f7889b9fb1a62a9577e685c1fcfa919"
     assert parsed_json["headers"]["X-Ja4-Fingerprint"] == "t13d1717h2_5b57614c22b0_3cbfd9057e0d"
