@@ -43,6 +43,20 @@ func JA4Fingerprint(data *metadata.Metadata) (string, error) {
 	return fp.String(), nil
 }
 
+// JA4StableFingerprint is a FingerprintFunc that returns a canonical JA4
+// variant with connection-state-dependent TLS extensions removed from the
+// extension count and extension hash inputs.
+func JA4StableFingerprint(data *metadata.Metadata) (string, error) {
+	fp := &ja4.StableJA4Fingerprint{}
+	err := fp.UnmarshalBytes(data.ClientHelloRecord, 't') // TODO: identify connection protocol
+	if err != nil {
+		return "", fmt.Errorf("stable ja4: %w", err)
+	}
+
+	vlogf("stable ja4: %s", fp)
+	return fp.String(), nil
+}
+
 // JA3Fingerprint is a FingerprintFunc
 func JA3Fingerprint(data *metadata.Metadata) (string, error) {
 	hellobasic := &tlsx.ClientHelloBasic{}
