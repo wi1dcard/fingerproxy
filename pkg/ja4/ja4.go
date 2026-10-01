@@ -16,6 +16,20 @@ const (
 	cipherSuitesSeparator                   = ","
 	extensionsSeparator                     = ","
 	signatureAlgorithmSeparator             = ","
+	ja4ExtensionSNI                         = 0x0000
+	ja4ExtensionALPN                        = 0x0010
+	ja4ExtensionPadding                     = 0x0015
+	ja4ExtensionSessionTicket               = 0x0023
+	ja4ExtensionPreSharedKey                = 0x0029
+)
+
+type unmarshalPolicy struct {
+	ignoreEphemeralExtensions bool
+}
+
+var (
+	rawJA4Policy    = unmarshalPolicy{}
+	stableJA4Policy = unmarshalPolicy{ignoreEphemeralExtensions: true}
 )
 
 type JA4Fingerprint struct {
@@ -44,7 +58,22 @@ type JA4Fingerprint struct {
 	SignatureAlgorithms signatureAlgorithms
 }
 
+// StableJA4Fingerprint computes a canonical JA4 variant that ignores
+// connection-state-dependent TLS extensions known to drift across fresh and
+// resumed handshakes.
+type StableJA4Fingerprint struct {
+	JA4Fingerprint
+}
+
 func (j *JA4Fingerprint) UnmarshalBytes(clientHelloRecord []byte, protocol byte) error {
+	return j.unmarshalBytes(clientHelloRecord, protocol, rawJA4Policy)
+}
+
+func (j *StableJA4Fingerprint) UnmarshalBytes(clientHelloRecord []byte, protocol byte) error {
+	return j.JA4Fingerprint.unmarshalBytes(clientHelloRecord, protocol, stableJA4Policy)
+}
+
+func (j *JA4Fingerprint) unmarshalBytes(clientHelloRecord []byte, protocol byte, policy unmarshalPolicy) error {
 	chs := &utls.ClientHelloSpec{}
 	// allowBluntMimicry: true
 	// realPSK: false
@@ -52,28 +81,35 @@ func (j *JA4Fingerprint) UnmarshalBytes(clientHelloRecord []byte, protocol byte)
 	if err != nil {
 		return fmt.Errorf("cannot parse client hello: %w", err)
 	}
-	return j.Unmarshal(chs, protocol)
+	return j.unmarshal(chs, protocol, policy)
 }
 
 func (j *JA4Fingerprint) Unmarshal(chs *utls.ClientHelloSpec, protocol byte) error {
-	var err error
+	return j.unmarshal(chs, protocol, rawJA4Policy)
+}
 
+func (j *StableJA4Fingerprint) Unmarshal(chs *utls.ClientHelloSpec, protocol byte) error {
+	return j.JA4Fingerprint.unmarshal(chs, protocol, stableJA4Policy)
+}
+
+func (j *JA4Fingerprint) unmarshal(chs *utls.ClientHelloSpec, protocol byte, policy unmarshalPolicy) error {
 	// ja4_a
 	j.Protocol = protocol
 	j.unmarshalTLSVersion(chs)
 	j.unmarshalSNI(chs)
 	j.unmarshalNumberOfCipherSuites(chs)
-	j.unmarshalNumberOfExtensions(chs)
 	j.unmarshalFirstALPN(chs)
 
 	// ja4_b
 	j.unmarshalCipherSuites(chs, false)
 
 	// ja4_c
-	err = j.unmarshalExtensions(chs, false)
+	extensions, extensionCount, err := collectExtensions(chs, false, policy.ignoreEphemeralExtensions)
 	if err != nil {
 		return err
 	}
+	j.NumberOfExtensions = numberOfExtensions(extensionCount)
+	j.Extensions = extensions
 	j.unmarshalSignatureAlgorithm(chs)
 
 	return nil
@@ -146,17 +182,6 @@ func (j *JA4Fingerprint) unmarshalNumberOfCipherSuites(chs *utls.ClientHelloSpec
 	j.NumberOfCipherSuites = numberOfCipherSuites(n)
 }
 
-func (j *JA4Fingerprint) unmarshalNumberOfExtensions(chs *utls.ClientHelloSpec) {
-	var n int
-	for _, e := range chs.Extensions {
-		if _, ok := e.(*utls.UtlsGREASEExtension); ok {
-			continue
-		}
-		n++
-	}
-	j.NumberOfExtensions = numberOfExtensions(n)
-}
-
 func (j *JA4Fingerprint) unmarshalFirstALPN(chs *utls.ClientHelloSpec) {
 	var alpn string
 	for _, e := range chs.Extensions {
@@ -200,45 +225,37 @@ func (j *JA4Fingerprint) unmarshalCipherSuites(chs *utls.ClientHelloSpec, keepOr
 // keepOriginalOrder (-o option) should be false unless keeping SNI and ALPN extension
 // and the original order of extensions, ref:
 // https://github.com/FoxIO-LLC/ja4/blob/61319bfc0d0038e0a240a8ab83aef1fdd821d404/technical_details/JA4.md?plain=1#L140C52-L140C60
-func (j *JA4Fingerprint) unmarshalExtensions(chs *utls.ClientHelloSpec, keepOriginalOrder bool) error {
+func collectExtensions(chs *utls.ClientHelloSpec, keepOriginalOrder bool, ignoreEphemeral bool) ([]uint16, int, error) {
 	var extensions []uint16
+	var count int
 	for _, e := range chs.Extensions {
 		// exclude GREASE extensions
 		if _, ok := e.(*utls.UtlsGREASEExtension); ok {
 			continue
 		}
 
+		extId, err := extensionID(e)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		if !(ignoreEphemeral && isEphemeralExtension(extId)) {
+			count++
+		}
+
 		if !keepOriginalOrder {
 			// SNI and ALPN extension should not be included, ref:
 			// https://github.com/FoxIO-LLC/ja4/blob/61319bfc0d0038e0a240a8ab83aef1fdd821d404/technical_details/JA4.md?plain=1#L79
-			if _, ok := e.(*utls.SNIExtension); ok {
+			if extId == ja4ExtensionSNI {
 				continue
 			}
-			if _, ok := e.(*utls.ALPNExtension); ok {
+			if extId == ja4ExtensionALPN {
+				continue
+			}
+			if ignoreEphemeral && isEphemeralExtension(extId) {
 				continue
 			}
 		}
-
-		// hack utls to allow reading padding extension data below
-		if pe, ok := e.(*utls.UtlsPaddingExtension); ok {
-			pe.WillPad = true
-		}
-
-		l := e.Len()
-		if l == 0 {
-			return fmt.Errorf("extension data should not be empty")
-		}
-
-		buf := make([]byte, l)
-		n, err := e.Read(buf)
-		if err != nil && !errors.Is(err, io.EOF) {
-			return fmt.Errorf("failed to read extension: %w", err)
-		}
-
-		if n < 2 {
-			return fmt.Errorf("extension data is too short, expect more than 2, actual %d", n)
-		}
-		extId := uint16(buf[0])<<8 | uint16(buf[1])
 
 		extensions = append(extensions, extId)
 	}
@@ -246,8 +263,7 @@ func (j *JA4Fingerprint) unmarshalExtensions(chs *utls.ClientHelloSpec, keepOrig
 	if !keepOriginalOrder {
 		sortUint16(extensions)
 	}
-	j.Extensions = extensions
-	return nil
+	return extensions, count, nil
 }
 
 func (j *JA4Fingerprint) unmarshalSignatureAlgorithm(chs *utls.ClientHelloSpec) {
@@ -260,4 +276,50 @@ func (j *JA4Fingerprint) unmarshalSignatureAlgorithm(chs *utls.ClientHelloSpec) 
 		}
 	}
 	j.SignatureAlgorithms = algo
+}
+
+func extensionID(e utls.TLSExtension) (uint16, error) {
+	switch e.(type) {
+	case *utls.SNIExtension:
+		return ja4ExtensionSNI, nil
+	case *utls.ALPNExtension:
+		return ja4ExtensionALPN, nil
+	case *utls.SessionTicketExtension:
+		return ja4ExtensionSessionTicket, nil
+	case *utls.UtlsPaddingExtension:
+		return ja4ExtensionPadding, nil
+	case utls.PreSharedKeyExtension:
+		return ja4ExtensionPreSharedKey, nil
+	}
+
+	// hack utls to allow reading padding extension data below
+	if pe, ok := e.(*utls.UtlsPaddingExtension); ok {
+		pe.WillPad = true
+	}
+
+	l := e.Len()
+	if l == 0 {
+		return 0, fmt.Errorf("extension data should not be empty")
+	}
+
+	buf := make([]byte, l)
+	n, err := e.Read(buf)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return 0, fmt.Errorf("failed to read extension: %w", err)
+	}
+
+	if n < 2 {
+		return 0, fmt.Errorf("extension data is too short, expect more than 2, actual %d", n)
+	}
+
+	return uint16(buf[0])<<8 | uint16(buf[1]), nil
+}
+
+func isEphemeralExtension(extensionID uint16) bool {
+	switch extensionID {
+	case ja4ExtensionPadding, ja4ExtensionSessionTicket, ja4ExtensionPreSharedKey:
+		return true
+	default:
+		return false
+	}
 }
