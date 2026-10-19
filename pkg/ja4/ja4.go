@@ -266,11 +266,22 @@ func collectExtensions(chs *utls.ClientHelloSpec, keepOriginalOrder bool, ignore
 	return extensions, count, nil
 }
 
+// GREASE values are excluded here as well, since the JA4 spec requires ignoring
+// them anywhere they appear and the reference implementation filters them out of
+// the signature algorithm list, ref:
+// https://github.com/FoxIO-LLC/ja4/blob/61319bfc0d0038e0a240a8ab83aef1fdd821d404/technical_details/JA4.md?plain=1#L40
+// https://github.com/FoxIO-LLC/ja4/blob/e7226cb51729f70fce740e615f8b2168ad68f67c/python/common.py#L213
+//
+// Clients re-randomize the value on every connection (RFC 8701 section 3.1), so
+// keeping it would make ja4_c differ between handshakes of the same client.
 func (j *JA4Fingerprint) unmarshalSignatureAlgorithm(chs *utls.ClientHelloSpec) {
 	var algo []uint16
 	for _, e := range chs.Extensions {
 		if sae, ok := e.(*utls.SignatureAlgorithmsExtension); ok {
 			for _, a := range sae.SupportedSignatureAlgorithms {
+				if isGREASEUint16(uint16(a)) {
+					continue
+				}
 				algo = append(algo, uint16(a))
 			}
 		}
