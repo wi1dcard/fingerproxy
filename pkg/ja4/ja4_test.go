@@ -3,6 +3,8 @@ package ja4
 import (
 	"encoding/hex"
 	"testing"
+
+	utls "github.com/refraction-networking/utls"
 )
 
 func hexToBytes(t *testing.T, hexClientHello string) []byte {
@@ -54,6 +56,49 @@ var (
 	benchmarkClientHello             = []byte{22, 3, 1, 2, 0, 1, 0, 1, 252, 3, 3, 69, 176, 233, 69, 101, 132, 70, 251, 152, 19, 108, 48, 225, 190, 130, 237, 75, 216, 30, 22, 211, 50, 185, 243, 49, 122, 85, 63, 203, 136, 228, 38, 32, 50, 119, 97, 53, 205, 42, 33, 61, 205, 147, 94, 233, 244, 113, 118, 141, 113, 77, 138, 158, 50, 146, 16, 46, 26, 46, 132, 15, 82, 100, 75, 1, 0, 32, 74, 74, 19, 1, 19, 2, 19, 3, 192, 43, 192, 47, 192, 44, 192, 48, 204, 169, 204, 168, 192, 19, 192, 20, 0, 156, 0, 157, 0, 47, 0, 53, 1, 0, 1, 147, 74, 74, 0, 0, 0, 0, 0, 25, 0, 23, 0, 0, 20, 108, 112, 116, 97, 103, 46, 108, 105, 118, 101, 112, 101, 114, 115, 111, 110, 46, 110, 101, 116, 0, 51, 0, 43, 0, 41, 26, 26, 0, 1, 0, 0, 29, 0, 32, 160, 161, 163, 83, 196, 153, 112, 74, 155, 86, 175, 119, 243, 248, 124, 253, 210, 135, 227, 48, 9, 237, 165, 79, 154, 185, 180, 63, 178, 245, 149, 99, 0, 16, 0, 14, 0, 12, 2, 104, 50, 8, 104, 116, 116, 112, 47, 49, 46, 49, 0, 23, 0, 0, 255, 1, 0, 1, 0, 0, 18, 0, 0, 0, 43, 0, 7, 6, 218, 218, 3, 4, 3, 3, 0, 13, 0, 18, 0, 16, 4, 3, 8, 4, 4, 1, 5, 3, 8, 5, 5, 1, 8, 6, 6, 1, 0, 10, 0, 10, 0, 8, 26, 26, 0, 29, 0, 23, 0, 24, 0, 45, 0, 2, 1, 1, 0, 5, 0, 5, 1, 0, 0, 0, 0, 0, 35, 0, 0, 0, 11, 0, 2, 1, 0, 68, 105, 0, 5, 0, 3, 2, 104, 50, 0, 27, 0, 3, 2, 0, 2, 234, 234, 0, 1, 0, 0, 21, 0, 195, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	thisPreventsCompilerOptimization string
 )
+
+// A client re-randomizes its GREASE signature algorithm on every connection, so
+// a fingerprint that hashes it changes between handshakes of the same client.
+// Comparing against a hello that never advertised one also checks that dropping
+// GREASE leaves the remaining algorithms alone.
+func TestJA4IgnoresGREASESignatureAlgorithms(t *testing.T) {
+	first, second := testJA4BaseSpec(), testJA4BaseSpec()
+	withGREASESignatureAlgorithm(first, 0x0a0a)
+	withGREASESignatureAlgorithm(second, 0x5a5a)
+
+	for _, variant := range []struct {
+		name string
+		ja4  func(*testing.T, *utls.ClientHelloSpec) string
+	}{
+		{"raw", mustRawJA4FromSpec},
+		{"stable", mustStableJA4FromSpec},
+	} {
+		t.Run(variant.name, func(t *testing.T) {
+			noGREASE := variant.ja4(t, testJA4BaseSpec())
+			if got := variant.ja4(t, first); got != noGREASE {
+				t.Errorf("GREASE 0x0a0a changed the fingerprint: %s, want %s", got, noGREASE)
+			}
+			if got := variant.ja4(t, second); got != noGREASE {
+				t.Errorf("GREASE 0x5a5a changed the fingerprint: %s, want %s", got, noGREASE)
+			}
+		})
+	}
+}
+
+func withGREASESignatureAlgorithm(spec *utls.ClientHelloSpec, grease uint16) {
+	for _, e := range spec.Extensions {
+		sae, ok := e.(*utls.SignatureAlgorithmsExtension)
+		if !ok {
+			continue
+		}
+		sae.SupportedSignatureAlgorithms = append(
+			[]utls.SignatureScheme{utls.SignatureScheme(grease)},
+			sae.SupportedSignatureAlgorithms...,
+		)
+		return
+	}
+	panic("base spec has no signature algorithms extension")
+}
 
 func BenchmarkJA4(b *testing.B) {
 	for n := 0; n < b.N; n++ {
